@@ -137,6 +137,7 @@
   // ===== STATE =====
   let currentPrice = 0;
   let shiftOrders = [];
+  let shiftStartTime = null;
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
   let detectedPage = null;
@@ -263,7 +264,7 @@
         </div>
 
         <div class="tqs-dashboard">
-          <div class="tqs-dashboard-title">📊 Thống Kê Ca</div>
+          <div class="tqs-dashboard-title">📊 Thống Kê Ca <span class="tqs-shift-time" id="tqs-shift-time"></span></div>
           <div class="tqs-stats-grid">
             <div class="tqs-stat-card">
               <span class="tqs-stat-value" id="tqs-total-orders">0</span>
@@ -278,9 +279,55 @@
               <span class="tqs-stat-label">5%</span>
             </div>
           </div>
+          <div class="tqs-page-breakdown" id="tqs-page-breakdown"></div>
+
+          <div class="tqs-order-list-section">
+            <div class="tqs-order-list-header">
+              <span>📝 Danh sách đơn</span>
+              <button class="tqs-toggle-list" id="tqs-toggle-list">▼</button>
+            </div>
+            <div class="tqs-order-list" id="tqs-order-list"></div>
+          </div>
+
           <div class="tqs-dashboard-actions">
-            <button class="tqs-btn-secondary" id="tqs-reset">🔄 Reset</button>
-            <button class="tqs-btn-secondary" id="tqs-report">📄 Báo Cáo</button>
+            <button class="tqs-btn-secondary" id="tqs-report">📋 Copy BC</button>
+            <button class="tqs-btn-secondary tqs-btn-download" id="tqs-download">💾 Lưu TXT</button>
+            <button class="tqs-btn-secondary tqs-btn-danger" id="tqs-reset">🔄 Reset</button>
+          </div>
+          <div class="tqs-history-section">
+            <button class="tqs-btn-secondary tqs-btn-small" id="tqs-view-history">📂 Lịch Sử</button>
+          </div>
+        </div>
+
+        <div class="tqs-edit-modal tqs-hidden" id="tqs-edit-modal">
+          <div class="tqs-edit-content">
+            <div class="tqs-edit-title">✏️ Sửa đơn</div>
+            <div class="tqs-form-group">
+              <label>Khách hàng</label>
+              <input type="text" class="tqs-input" id="tqs-edit-customer">
+            </div>
+            <div class="tqs-form-group">
+              <label>Reader</label>
+              <input type="text" class="tqs-input" id="tqs-edit-reader">
+            </div>
+            <div class="tqs-form-row">
+              <div class="tqs-form-group">
+                <label>Gói</label>
+                <input type="text" class="tqs-input" id="tqs-edit-package">
+              </div>
+              <div class="tqs-form-group">
+                <label>Giá (k)</label>
+                <input type="number" class="tqs-input" id="tqs-edit-price">
+              </div>
+            </div>
+            <div class="tqs-form-group">
+              <label>Ghi chú</label>
+              <input type="text" class="tqs-input" id="tqs-edit-note">
+            </div>
+            <div class="tqs-btn-group">
+              <button class="tqs-btn-secondary" id="tqs-edit-cancel">Hủy</button>
+              <button class="tqs-btn-primary" id="tqs-edit-save">✓ Lưu</button>
+            </div>
           </div>
         </div>
       </div>
@@ -345,9 +392,25 @@
     salary: panel.querySelector("#tqs-salary"),
     resetBtn: panel.querySelector("#tqs-reset"),
     reportBtn: panel.querySelector("#tqs-report"),
+    downloadBtn: panel.querySelector("#tqs-download"),
+    historyBtn: panel.querySelector("#tqs-view-history"),
+    pageBreakdown: panel.querySelector("#tqs-page-breakdown"),
+    shiftTimeEl: panel.querySelector("#tqs-shift-time"),
+    orderList: panel.querySelector("#tqs-order-list"),
+    toggleListBtn: panel.querySelector("#tqs-toggle-list"),
+    editModal: panel.querySelector("#tqs-edit-modal"),
+    editCustomer: panel.querySelector("#tqs-edit-customer"),
+    editReader: panel.querySelector("#tqs-edit-reader"),
+    editPackage: panel.querySelector("#tqs-edit-package"),
+    editPrice: panel.querySelector("#tqs-edit-price"),
+    editNote: panel.querySelector("#tqs-edit-note"),
+    editCancel: panel.querySelector("#tqs-edit-cancel"),
+    editSave: panel.querySelector("#tqs-edit-save"),
     toast: document.querySelector("#tqs-toast"),
     toggleBtn: document.querySelector("#tarot-quicksale-toggle"),
   };
+
+  let editingOrderId = null; // Track which order is being edited
 
   // ===== UTILITY FUNCTIONS =====
   function showToast(message, type = "success") {
@@ -428,6 +491,112 @@
     els.totalOrders.textContent = total;
     els.totalRevenue.textContent = revenue + "k";
     els.salary.textContent = salary + "k";
+
+    // Per-page breakdown
+    const byPage = {};
+    shiftOrders.forEach((o) => {
+      if (!byPage[o.pageName]) byPage[o.pageName] = { count: 0, revenue: 0 };
+      byPage[o.pageName].count++;
+      byPage[o.pageName].revenue += o.price;
+    });
+
+    let breakdownHTML = "";
+    for (const [page, data] of Object.entries(byPage)) {
+      breakdownHTML += `<div class="tqs-breakdown-row">
+        <span class="tqs-breakdown-page">${page}</span>
+        <span class="tqs-breakdown-info">${data.count} đơn • ${data.revenue}k</span>
+      </div>`;
+    }
+    els.pageBreakdown.innerHTML = breakdownHTML;
+
+    // Shift time
+    if (shiftStartTime) {
+      const start = new Date(shiftStartTime);
+      els.shiftTimeEl.textContent = `(${start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })})`;
+    }
+
+    // Render order list
+    renderOrderList();
+  }
+
+  // ===== ORDER LIST =====
+  function renderOrderList() {
+    if (!shiftOrders.length) {
+      els.orderList.innerHTML =
+        '<div class="tqs-order-empty">Chưa có đơn nào</div>';
+      return;
+    }
+
+    const fmtTime = (d) =>
+      new Date(d).toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+    let html = "";
+    shiftOrders.forEach((o, i) => {
+      html += `<div class="tqs-order-item" data-id="${o.id}">
+        <div class="tqs-order-num">${i + 1}</div>
+        <div class="tqs-order-info">
+          <div class="tqs-order-main">
+            <span class="tqs-order-page">[${o.pageName}]</span>
+            <span class="tqs-order-pkg">${o.packageDisplay}</span>
+            <span class="tqs-order-price">${o.price}k</span>
+          </div>
+          <div class="tqs-order-detail">
+            ${o.customer} • @${o.reader} • ${fmtTime(o.timestamp)}
+          </div>
+        </div>
+        <div class="tqs-order-actions">
+          <button class="tqs-order-btn tqs-edit-btn" data-id="${o.id}" title="Sửa">✏️</button>
+          <button class="tqs-order-btn tqs-delete-btn" data-id="${o.id}" title="Xóa">✕</button>
+        </div>
+      </div>`;
+    });
+    els.orderList.innerHTML = html;
+  }
+
+  // ===== EDIT ORDER =====
+  function openEditOrder(id) {
+    const order = shiftOrders.find((o) => o.id === id);
+    if (!order) return;
+
+    editingOrderId = id;
+    els.editCustomer.value = order.customer;
+    els.editReader.value = order.reader;
+    els.editPackage.value = order.packageDisplay;
+    els.editPrice.value = order.price;
+    els.editNote.value = order.note || "";
+    els.editModal.classList.remove("tqs-hidden");
+  }
+
+  function saveEditOrder() {
+    const idx = shiftOrders.findIndex((o) => o.id === editingOrderId);
+    if (idx === -1) return;
+
+    shiftOrders[idx].customer = els.editCustomer.value.trim();
+    shiftOrders[idx].reader = els.editReader.value.trim();
+    shiftOrders[idx].packageDisplay = els.editPackage.value.trim();
+    shiftOrders[idx].price = parseInt(els.editPrice.value) || 0;
+    shiftOrders[idx].note = els.editNote.value.trim();
+
+    chrome.storage.local.set({ shiftOrders });
+    els.editModal.classList.add("tqs-hidden");
+    editingOrderId = null;
+    updateDashboard();
+    showToast("✓ Đã sửa!");
+  }
+
+  function deleteOrder(id) {
+    const idx = shiftOrders.findIndex((o) => o.id === id);
+    if (idx === -1) return;
+    const o = shiftOrders[idx];
+    if (!confirm(`Xóa đơn: ${o.customer} - ${o.price}k?`)) return;
+
+    shiftOrders.splice(idx, 1);
+    chrome.storage.local.set({ shiftOrders });
+    updateDashboard();
+    showToast("✓ Đã xóa!");
   }
 
   // ===== GENERATE MESSAGE =====
@@ -588,12 +757,21 @@
 
   // ===== SAVE ORDER =====
   function saveOrder() {
+    // Start shift timer on first order
+    if (!shiftStartTime) {
+      shiftStartTime = new Date().toISOString();
+    }
+
     const order = {
       id: Date.now(),
       page: els.pageSelect.value,
       pageName: PRICING_DATA[els.pageSelect.value].name,
       customer: els.customerInput.value.trim(),
       reader: els.readerInput.value.trim(),
+      service: els.customMode.checked ? "Custom" : els.serviceSelect.value,
+      package: els.customMode.checked
+        ? els.customName.value.trim()
+        : els.packageSelect.value,
       packageDisplay: els.customMode.checked
         ? els.customName.value.trim()
         : `${els.serviceSelect.value} ${els.packageSelect.value}`,
@@ -606,6 +784,7 @@
 
     chrome.storage.local.set({
       shiftOrders: shiftOrders,
+      shiftStartTime: shiftStartTime,
       currentReader: els.readerInput.value.trim(),
     });
 
@@ -628,20 +807,61 @@
     els.customerInput.focus();
   }
 
-  // ===== RESET SHIFT =====
-  async function resetShift() {
-    if (shiftOrders.length === 0) {
-      showToast("Chưa có đơn!", "warning");
-      return;
+  // ===== BUILD REPORT =====
+  function buildReport() {
+    const revenue = shiftOrders.reduce((s, o) => s + o.price, 0);
+    const salary = Math.floor(revenue * 0.05);
+    const now = new Date();
+    const startTime = shiftStartTime ? new Date(shiftStartTime) : now;
+    const fmtDate = (d) =>
+      d.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    const fmtTime = (d) =>
+      d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+    // Group by page
+    const byPage = {};
+    shiftOrders.forEach((o) => {
+      if (!byPage[o.pageName]) byPage[o.pageName] = [];
+      byPage[o.pageName].push(o);
+    });
+
+    let report = "";
+    report += `═══════════════════════════════════════\n`;
+    report += `  📊 BÁO CÁO CA TAROT\n`;
+    report += `  📅 ${fmtDate(startTime)}  ⏰ ${fmtTime(startTime)} → ${fmtTime(now)}\n`;
+    report += `═══════════════════════════════════════\n\n`;
+
+    // Per-page detail
+    let orderNum = 0;
+    for (const [pageName, orders] of Object.entries(byPage)) {
+      const pageRevenue = orders.reduce((s, o) => s + o.price, 0);
+      report += `┌─── ${pageName} (${orders.length} đơn • ${pageRevenue}k) ───\n`;
+      report += `│\n`;
+      orders.forEach((o) => {
+        orderNum++;
+        const time = new Date(o.timestamp);
+        report += `│  ${orderNum}. ${o.packageDisplay} - ${o.price}k\n`;
+        report += `│     ${o.customer}  @${o.reader}\n`;
+        report += `│     ${fmtTime(time)}\n`;
+        if (o.note) report += `│     📝 ${o.note}\n`;
+      });
+      report += `│\n`;
+      report += `└─── Tổng ${pageName}: ${pageRevenue}k\n\n`;
     }
 
-    const total = shiftOrders.reduce((s, o) => s + o.price, 0);
-    if (confirm(`Reset ca?\n${shiftOrders.length} đơn - ${total}k`)) {
-      shiftOrders = [];
-      chrome.storage.local.set({ shiftOrders: [] });
-      updateDashboard();
-      showToast("Đã reset!");
-    }
+    // Total
+    report += `═══════════════════════════════════════\n`;
+    report += `  📈 TỔNG KẾT\n`;
+    report += `  Đơn:    ${shiftOrders.length}\n`;
+    report += `  Tiền:   ${revenue}k\n`;
+    report += `  Lương:  ${salary}k (5%)\n`;
+    report += `═══════════════════════════════════════\n`;
+
+    return report;
   }
 
   // ===== COPY REPORT =====
@@ -650,29 +870,123 @@
       showToast("Chưa có đơn!", "warning");
       return;
     }
-
-    const revenue = shiftOrders.reduce((s, o) => s + o.price, 0);
-    const salary = Math.floor(revenue * 0.05);
-
-    let report = `📊 BÁO CÁO CA - ${new Date().toLocaleDateString("vi-VN")}\n`;
-    report += `Reader: ${els.readerInput.value.trim()}\n`;
-    report += `═══════════════════════\n\n`;
-
-    shiftOrders.forEach((o, i) => {
-      report += `${i + 1}. [${o.pageName}] ${o.packageDisplay} - ${o.price}k\n`;
-      report += `   ${o.customer}\n`;
-      if (o.note) report += `   ${o.note}\n`;
-      report += "\n";
-    });
-
-    report += `═══════════════════════\n`;
-    report += `📈 TỔNG: ${shiftOrders.length} đơn | ${revenue}k | Lương: ${salary}k\n`;
-
     try {
-      await navigator.clipboard.writeText(report);
+      await navigator.clipboard.writeText(buildReport());
       showToast("✓ Đã copy báo cáo!");
     } catch (err) {
       showToast("Lỗi!", "error");
+    }
+  }
+
+  // ===== DOWNLOAD REPORT AS TXT =====
+  function downloadReport() {
+    if (shiftOrders.length === 0) {
+      showToast("Chưa có đơn!", "warning");
+      return;
+    }
+
+    const report = buildReport();
+    const now = new Date();
+    const dateStr = now
+      .toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, "-");
+    const timeStr = now
+      .toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+      .replace(":", "h");
+    const filename = `BaoCao_${dateStr}_${timeStr}.txt`;
+
+    const blob = new Blob([report], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`✓ Đã lưu ${filename}`);
+  }
+
+  // ===== RESET SHIFT (archive + clear) =====
+  async function resetShift() {
+    if (shiftOrders.length === 0) {
+      showToast("Chưa có đơn!", "warning");
+      return;
+    }
+
+    const total = shiftOrders.reduce((s, o) => s + o.price, 0);
+    if (
+      !confirm(
+        `Reset ca?\n${shiftOrders.length} đơn - ${total}k\n\nBáo cáo sẽ được lưu vào lịch sử.`,
+      )
+    )
+      return;
+
+    // Archive this shift
+    const archive = {
+      id: Date.now(),
+      startTime: shiftStartTime || new Date().toISOString(),
+      endTime: new Date().toISOString(),
+      orders: [...shiftOrders],
+      totalOrders: shiftOrders.length,
+      totalRevenue: total,
+    };
+
+    const data = await chrome.storage.local.get(["shiftHistory"]);
+    const history = data.shiftHistory || [];
+    history.unshift(archive); // newest first
+    // Keep max 30 shifts
+    if (history.length > 30) history.length = 30;
+
+    shiftOrders = [];
+    shiftStartTime = null;
+    await chrome.storage.local.set({
+      shiftOrders: [],
+      shiftStartTime: null,
+      shiftHistory: history,
+    });
+    updateDashboard();
+    showToast("✓ Đã lưu và reset!");
+  }
+
+  // ===== VIEW HISTORY =====
+  async function viewHistory() {
+    const data = await chrome.storage.local.get(["shiftHistory"]);
+    const history = data.shiftHistory || [];
+
+    if (history.length === 0) {
+      showToast("Chưa có lịch sử!", "warning");
+      return;
+    }
+
+    const fmtDate = (d) =>
+      new Date(d).toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+      });
+    const fmtTime = (d) =>
+      new Date(d).toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+    let txt = "📂 LỊCH SỬ CA (gần nhất)\n\n";
+    history.slice(0, 10).forEach((shift, i) => {
+      txt += `${i + 1}. ${fmtDate(shift.startTime)} ${fmtTime(shift.startTime)}-${fmtTime(shift.endTime)}`;
+      txt += ` | ${shift.totalOrders} đơn | ${shift.totalRevenue}k\n`;
+    });
+
+    try {
+      await navigator.clipboard.writeText(txt);
+      showToast("✓ Đã copy lịch sử!");
+    } catch (err) {
+      alert(txt);
     }
   }
 
@@ -682,8 +996,10 @@
       const data = await chrome.storage.local.get([
         "currentReader",
         "shiftOrders",
+        "shiftStartTime",
       ]);
       if (data.currentReader) els.readerInput.value = data.currentReader;
+      if (data.shiftStartTime) shiftStartTime = data.shiftStartTime;
       if (data.shiftOrders && Array.isArray(data.shiftOrders)) {
         shiftOrders = data.shiftOrders;
         updateDashboard();
@@ -799,6 +1115,31 @@
     els.sendMsgBtn.addEventListener("click", sendToMessenger);
     els.resetBtn.addEventListener("click", resetShift);
     els.reportBtn.addEventListener("click", copyReport);
+    els.downloadBtn.addEventListener("click", downloadReport);
+    els.historyBtn.addEventListener("click", viewHistory);
+
+    // Order list: toggle, edit, delete
+    els.toggleListBtn.addEventListener("click", () => {
+      els.orderList.classList.toggle("tqs-collapsed");
+      els.toggleListBtn.textContent = els.orderList.classList.contains(
+        "tqs-collapsed",
+      )
+        ? "▶"
+        : "▼";
+    });
+
+    els.orderList.addEventListener("click", (e) => {
+      const editBtn = e.target.closest(".tqs-edit-btn");
+      const deleteBtn = e.target.closest(".tqs-delete-btn");
+      if (editBtn) openEditOrder(parseInt(editBtn.dataset.id));
+      if (deleteBtn) deleteOrder(parseInt(deleteBtn.dataset.id));
+    });
+
+    els.editSave.addEventListener("click", saveEditOrder);
+    els.editCancel.addEventListener("click", () => {
+      els.editModal.classList.add("tqs-hidden");
+      editingOrderId = null;
+    });
 
     // Enter key shortcuts
     els.customerInput.addEventListener("keypress", (e) => {

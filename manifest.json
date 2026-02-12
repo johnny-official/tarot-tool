@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Tarot QuickSale",
+  "version": "2.0.0",
+  "description": "Công cụ hỗ trợ nhân viên Sale Tarot chốt đơn nhanh - Cá, Dừa, Pờ Bơ",
+  "permissions": ["storage", "tabs", "scripting", "activeTab"],
+  "host_permissions": [
+    "https://business.facebook.com/*",
+    "https://www.facebook.com/*",
+    "https://www.messenger.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://business.facebook.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://www.messenger.com/*",
+        "https://www.facebook.com/messages/*"
+      ],
+      "js": ["messenger.js"],
+      "run_at": "document_end",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_title": "Tarot QuickSale"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["messenger.js", "price.json"],
+      "matches": ["https://www.facebook.com/*", "https://www.messenger.com/*"]
+    }
+  ]
+}

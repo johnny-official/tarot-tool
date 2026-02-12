@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tarot QuickSale</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header Section -->
+      <header class="header">
+        <h1 class="logo">🔮 Tarot QuickSale</h1>
+        <div class="header-controls">
+          <div class="form-group">
+            <label for="pageSelect">Page</label>
+            <select id="pageSelect" class="select-input">
+              <option value="CA">Cá</option>
+              <option value="DUA">Dừa</option>
+              <option value="POBO">Pờ Bơ</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="readerName">Reader</label>
+            <input
+              type="text"
+              id="readerName"
+              class="text-input"
+              placeholder="Nhập tên Reader..."
+            />
+          </div>
+        </div>
+      </header>
+
+      <!-- Form Section -->
+      <section class="form-section">
+        <div class="form-group">
+          <label for="customerName">Tên Khách Hàng</label>
+          <input
+            type="text"
+            id="customerName"
+            class="text-input"
+            placeholder="Nhập tên khách..."
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="serviceGroup">Nhóm Dịch Vụ</label>
+            <select id="serviceGroup" class="select-input">
+              <option value="">-- Chọn nhóm --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="packageSelect">Gói/Sản Phẩm</label>
+            <select id="packageSelect" class="select-input">
+              <option value="">-- Chọn gói --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row checkbox-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="showCards" />
+            <span class="checkmark"></span>
+            Show Bài
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="noteInput">Ghi chú</label>
+          <input
+            type="text"
+            id="noteInput"
+            class="text-input"
+            placeholder="Ghi chú thêm..."
+          />
+        </div>
+      </section>
+
+      <!-- Action Section -->
+      <section class="action-section">
+        <div class="price-display">
+          <span class="price-label">Giá tiền:</span>
+          <span class="price-value" id="priceDisplay">0k</span>
+        </div>
+        <button class="btn-primary" id="copyAndSaveBtn">📋 COPY & LƯU</button>
+      </section>
+
+      <!-- Dashboard Section -->
+      <section class="dashboard">
+        <h2 class="dashboard-title">📊 Thống Kê Ca</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value" id="totalOrders">0</span>
+            <span class="stat-label">Tổng đơn</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="totalRevenue">0k</span>
+            <span class="stat-label">Tổng tiền</span>
+          </div>
+          <div class="stat-card highlight">
+            <span class="stat-value" id="salaryValue">0k</span>
+            <span class="stat-label">Lương (5%)</span>
+          </div>
+        </div>
+        <div class="dashboard-actions">
+          <button class="btn-secondary" id="resetShiftBtn">🔄 Reset Ca</button>
+          <button class="btn-secondary" id="copyReportBtn">
+            📄 Copy Báo Cáo
+          </button>
+        </div>
+      </section>
+
+      <!-- Toast Notification -->
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

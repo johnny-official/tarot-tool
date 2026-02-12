@@ -142,6 +142,11 @@
   let dragOffset = { x: 0, y: 0 };
   let detectedPage = null;
 
+  // Reader state
+  let readerList = [];        // e.g. ['Hậu', 'Mai']
+  let activeReaderIdx = 0;    // current reader index
+  let dualReaderMode = false; // 2-reader shuffle mode
+
   // ===== DETECT PAGE FROM URL =====
   function detectPageFromURL() {
     const url = window.location.href;
@@ -172,15 +177,82 @@
     return `
       <div class="tqs-header" id="tqs-drag-handle">
         <span class="tqs-logo">🔮 Tarot QuickSale</span>
-        <div class="tqs-header-buttons">
-          <button class="tqs-header-btn tqs-minimize" id="tqs-minimize" title="Thu nhỏ">─</button>
-          <button class="tqs-header-btn tqs-close" id="tqs-close" title="Đóng">✕</button>
+        <div class="tqs-header-right">
+          ${detected ? `<span class="tqs-page-badge">📍 ${PRICING_DATA[detected].name}</span>` : ""}
+          <div class="tqs-header-buttons">
+            <button class="tqs-header-btn tqs-minimize" id="tqs-minimize" title="Thu nhỏ">─</button>
+            <button class="tqs-header-btn tqs-close" id="tqs-close" title="Đóng">✕</button>
+          </div>
         </div>
       </div>
-      <div class="tqs-body">
-        ${detected ? `<div class="tqs-detected-page">📍 Đang ở trang: <strong>${PRICING_DATA[detected].name}</strong></div>` : ""}
-        
-        <div class="tqs-form-row">
+
+      <div class="tqs-book">
+        <!-- ===== LEFT PAGE: Lịch sử ===== -->
+        <div class="tqs-page tqs-page-left">
+          <div class="tqs-page-title">📊 Ca làm việc <span class="tqs-shift-time" id="tqs-shift-time"></span></div>
+
+          <div class="tqs-stats-row">
+            <div class="tqs-stat-pill">
+              <span class="tqs-stat-num" id="tqs-total-orders">0</span>
+              <span class="tqs-stat-lbl">đơn</span>
+            </div>
+            <div class="tqs-stat-pill">
+              <span class="tqs-stat-num tqs-cyan" id="tqs-total-revenue">0k</span>
+              <span class="tqs-stat-lbl">doanh thu</span>
+            </div>
+            <div class="tqs-stat-pill tqs-stat-accent">
+              <span class="tqs-stat-num" id="tqs-salary">0k</span>
+              <span class="tqs-stat-lbl">lương 5%</span>
+            </div>
+          </div>
+
+          <div class="tqs-page-breakdown" id="tqs-page-breakdown"></div>
+
+          <div class="tqs-order-list-wrap">
+            <div class="tqs-order-list-head">
+              <span>📝 Đơn hàng</span>
+              <button class="tqs-toggle-list" id="tqs-toggle-list">▼</button>
+            </div>
+            <div class="tqs-order-list" id="tqs-order-list">
+              <div class="tqs-order-empty">Chưa có đơn</div>
+            </div>
+          </div>
+
+          <div class="tqs-left-actions">
+            <button class="tqs-act-btn" id="tqs-report" title="Copy Báo Cáo">📋</button>
+            <button class="tqs-act-btn tqs-act-save" id="tqs-download" title="Lưu TXT">💾</button>
+            <button class="tqs-act-btn" id="tqs-view-history" title="Lịch Sử">📂</button>
+            <button class="tqs-act-btn tqs-act-danger" id="tqs-reset" title="Reset">🔄</button>
+          </div>
+        </div>
+
+        <!-- ===== SPINE ===== -->
+        <div class="tqs-spine"></div>
+
+        <!-- ===== RIGHT PAGE: Soạn đơn ===== -->
+        <div class="tqs-page tqs-page-right">
+          <div class="tqs-page-title">✍️ Soạn đơn</div>
+
+          <!-- Reader Setup -->
+          <div class="tqs-reader-section">
+            <div class="tqs-reader-header">
+              <span class="tqs-reader-title">👤 Reader</span>
+              <label class="tqs-dual-toggle">
+                <input type="checkbox" id="tqs-dual-mode">
+                <span class="tqs-dual-label">2 Reader</span>
+              </label>
+            </div>
+            <div class="tqs-reader-setup">
+              <div class="tqs-reader-inputs">
+                <input type="text" class="tqs-input tqs-reader-input" id="tqs-reader-1" placeholder="Reader 1">
+                <input type="text" class="tqs-input tqs-reader-input tqs-hidden" id="tqs-reader-2" placeholder="Reader 2">
+              </div>
+              <button class="tqs-reader-set-btn" id="tqs-reader-set" title="Lưu">✓</button>
+            </div>
+            <div class="tqs-reader-chips" id="tqs-reader-chips"></div>
+            <div class="tqs-reader-active" id="tqs-reader-active"></div>
+          </div>
+
           <div class="tqs-form-group">
             <label>Page</label>
             <select class="tqs-select" id="tqs-page">
@@ -189,145 +261,105 @@
               <option value="POBO" ${detected === "POBO" ? "selected" : ""}>Pờ Bơ</option>
             </select>
           </div>
-          <div class="tqs-form-group">
-            <label>Reader</label>
-            <input type="text" class="tqs-input" id="tqs-reader" placeholder="@TênReader">
-          </div>
-        </div>
 
-        <div class="tqs-form-group">
-          <label>Tên Khách Hàng</label>
-          <input type="text" class="tqs-input" id="tqs-customer" placeholder="Nguyễn Văn A">
-        </div>
-
-        <div class="tqs-form-row">
           <div class="tqs-form-group">
-            <label>Nhóm DV</label>
-            <select class="tqs-select" id="tqs-service">
-              <option value="">-- Chọn --</option>
-            </select>
+            <label>Khách hàng</label>
+            <input type="text" class="tqs-input" id="tqs-customer" placeholder="Tên khách">
           </div>
-          <div class="tqs-form-group">
-            <label>Gói</label>
-            <select class="tqs-select" id="tqs-package">
-              <option value="">-- Chọn --</option>
-            </select>
-          </div>
-        </div>
 
-        <div class="tqs-custom-section">
-          <div class="tqs-custom-toggle">
+          <div class="tqs-form-row">
+            <div class="tqs-form-group">
+              <label>Dịch vụ</label>
+              <select class="tqs-select" id="tqs-service">
+                <option value="">-- Chọn --</option>
+              </select>
+            </div>
+            <div class="tqs-form-group">
+              <label>Gói</label>
+              <select class="tqs-select" id="tqs-package">
+                <option value="">-- Chọn --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="tqs-custom-section">
             <label class="tqs-checkbox-label">
               <input type="checkbox" id="tqs-custom-mode">
               <span class="tqs-checkmark"></span>
-              Tự nhập (Custom)
+              Custom
             </label>
-          </div>
-          <div class="tqs-custom-inputs tqs-hidden" id="tqs-custom-inputs">
-            <div class="tqs-form-row">
-              <div class="tqs-form-group">
-                <label>Tên Gói (VD: 3C CS TÂY)</label>
-                <input type="text" class="tqs-input" id="tqs-custom-name" placeholder="3C CS TÂY">
-              </div>
-              <div class="tqs-form-group">
-                <label>Giá (k)</label>
-                <input type="number" class="tqs-input" id="tqs-custom-price" placeholder="50">
+            <div class="tqs-custom-inputs tqs-hidden" id="tqs-custom-inputs">
+              <div class="tqs-form-row">
+                <div class="tqs-form-group">
+                  <label>Gói</label>
+                  <input type="text" class="tqs-input" id="tqs-custom-name" placeholder="3C CS TÂY">
+                </div>
+                <div class="tqs-form-group">
+                  <label>Giá</label>
+                  <input type="number" class="tqs-input" id="tqs-custom-price" placeholder="50">
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="tqs-form-group">
-          <label>Ghi chú (tùy chọn)</label>
-          <input type="text" class="tqs-input" id="tqs-note" placeholder="">
-        </div>
+          <div class="tqs-form-group">
+            <label>Ghi chú</label>
+            <input type="text" class="tqs-input" id="tqs-note" placeholder="(tùy chọn)">
+          </div>
 
-        <div class="tqs-action">
-          <div class="tqs-price-display">
-            <span class="tqs-price-label">Giá:</span>
+          <div class="tqs-price-bar">
             <span class="tqs-price-value" id="tqs-price">0k</span>
           </div>
-          <div class="tqs-platform-select">
+
+          <div class="tqs-platform-row">
             <label class="tqs-platform-btn">
               <input type="radio" name="platform" value="facebook" checked>
-              <span>FB Messages</span>
+              <span>FB Msg</span>
             </label>
             <label class="tqs-platform-btn">
               <input type="radio" name="platform" value="messenger">
               <span>Messenger</span>
             </label>
           </div>
-          <div class="tqs-btn-group">
-            <button class="tqs-btn-primary" id="tqs-copy-save">📋 COPY</button>
-            <button class="tqs-btn-send" id="tqs-send-msg">📤 GỬI NGAY</button>
+
+          <div class="tqs-send-row">
+            <button class="tqs-btn-copy" id="tqs-copy-save">📋 COPY</button>
+            <button class="tqs-btn-send" id="tqs-send-msg">📤 GỬI</button>
           </div>
         </div>
+      </div>
 
-        <div class="tqs-dashboard">
-          <div class="tqs-dashboard-title">📊 Thống Kê Ca <span class="tqs-shift-time" id="tqs-shift-time"></span></div>
-          <div class="tqs-stats-grid">
-            <div class="tqs-stat-card">
-              <span class="tqs-stat-value" id="tqs-total-orders">0</span>
-              <span class="tqs-stat-label">Đơn</span>
-            </div>
-            <div class="tqs-stat-card">
-              <span class="tqs-stat-value" id="tqs-total-revenue">0k</span>
-              <span class="tqs-stat-label">Tiền</span>
-            </div>
-            <div class="tqs-stat-card tqs-highlight">
-              <span class="tqs-stat-value" id="tqs-salary">0k</span>
-              <span class="tqs-stat-label">5%</span>
-            </div>
+      <!-- ===== EDIT MODAL ===== -->
+      <div class="tqs-edit-overlay tqs-hidden" id="tqs-edit-modal">
+        <div class="tqs-edit-card">
+          <div class="tqs-edit-title">✏️ Sửa đơn</div>
+          <div class="tqs-form-group">
+            <label>Khách hàng</label>
+            <input type="text" class="tqs-input" id="tqs-edit-customer">
           </div>
-          <div class="tqs-page-breakdown" id="tqs-page-breakdown"></div>
-
-          <div class="tqs-order-list-section">
-            <div class="tqs-order-list-header">
-              <span>📝 Danh sách đơn</span>
-              <button class="tqs-toggle-list" id="tqs-toggle-list">▼</button>
-            </div>
-            <div class="tqs-order-list" id="tqs-order-list"></div>
-          </div>
-
-          <div class="tqs-dashboard-actions">
-            <button class="tqs-btn-secondary" id="tqs-report">📋 Copy BC</button>
-            <button class="tqs-btn-secondary tqs-btn-download" id="tqs-download">💾 Lưu TXT</button>
-            <button class="tqs-btn-secondary tqs-btn-danger" id="tqs-reset">🔄 Reset</button>
-          </div>
-          <div class="tqs-history-section">
-            <button class="tqs-btn-secondary tqs-btn-small" id="tqs-view-history">📂 Lịch Sử</button>
-          </div>
-        </div>
-
-        <div class="tqs-edit-modal tqs-hidden" id="tqs-edit-modal">
-          <div class="tqs-edit-content">
-            <div class="tqs-edit-title">✏️ Sửa đơn</div>
-            <div class="tqs-form-group">
-              <label>Khách hàng</label>
-              <input type="text" class="tqs-input" id="tqs-edit-customer">
-            </div>
+          <div class="tqs-form-row">
             <div class="tqs-form-group">
               <label>Reader</label>
               <input type="text" class="tqs-input" id="tqs-edit-reader">
             </div>
-            <div class="tqs-form-row">
-              <div class="tqs-form-group">
-                <label>Gói</label>
-                <input type="text" class="tqs-input" id="tqs-edit-package">
-              </div>
-              <div class="tqs-form-group">
-                <label>Giá (k)</label>
-                <input type="number" class="tqs-input" id="tqs-edit-price">
-              </div>
+            <div class="tqs-form-group">
+              <label>Giá (k)</label>
+              <input type="number" class="tqs-input" id="tqs-edit-price">
+            </div>
+          </div>
+          <div class="tqs-form-row">
+            <div class="tqs-form-group">
+              <label>Gói</label>
+              <input type="text" class="tqs-input" id="tqs-edit-package">
             </div>
             <div class="tqs-form-group">
               <label>Ghi chú</label>
               <input type="text" class="tqs-input" id="tqs-edit-note">
             </div>
-            <div class="tqs-btn-group">
-              <button class="tqs-btn-secondary" id="tqs-edit-cancel">Hủy</button>
-              <button class="tqs-btn-primary" id="tqs-edit-save">✓ Lưu</button>
-            </div>
+          </div>
+          <div class="tqs-edit-btns">
+            <button class="tqs-ebtn tqs-ebtn-cancel" id="tqs-edit-cancel">Hủy</button>
+            <button class="tqs-ebtn tqs-ebtn-save" id="tqs-edit-save">✓ Lưu</button>
           </div>
         </div>
       </div>
@@ -375,7 +407,12 @@
     closeBtn: panel.querySelector("#tqs-close"),
     minimizeBtn: panel.querySelector("#tqs-minimize"),
     pageSelect: panel.querySelector("#tqs-page"),
-    readerInput: panel.querySelector("#tqs-reader"),
+    readerInput1: panel.querySelector("#tqs-reader-1"),
+    readerInput2: panel.querySelector("#tqs-reader-2"),
+    readerSetBtn: panel.querySelector("#tqs-reader-set"),
+    readerChips: panel.querySelector("#tqs-reader-chips"),
+    readerActive: panel.querySelector("#tqs-reader-active"),
+    dualModeToggle: panel.querySelector("#tqs-dual-mode"),
     customerInput: panel.querySelector("#tqs-customer"),
     serviceSelect: panel.querySelector("#tqs-service"),
     packageSelect: panel.querySelector("#tqs-package"),
@@ -410,7 +447,66 @@
     toggleBtn: document.querySelector("#tarot-quicksale-toggle"),
   };
 
-  let editingOrderId = null; // Track which order is being edited
+  let editingOrderId = null;
+
+  // ===== READER MANAGEMENT =====
+  function setupReaders() {
+    const r1 = els.readerInput1.value.trim();
+    const r2 = els.readerInput2.value.trim();
+
+    readerList = [];
+    if (r1) readerList.push(r1);
+    if (dualReaderMode && r2) readerList.push(r2);
+
+    if (readerList.length === 0) {
+      showToast("Nhập tên Reader!", "error");
+      return;
+    }
+
+    activeReaderIdx = 0;
+    chrome.storage.local.set({
+      savedReaders: readerList,
+      dualReaderMode: dualReaderMode,
+    });
+
+    renderReaderChips();
+    showToast(`✓ ${readerList.length} reader`);
+  }
+
+  function renderReaderChips() {
+    if (readerList.length === 0) {
+      els.readerChips.innerHTML = "";
+      els.readerActive.innerHTML = "";
+      return;
+    }
+
+    let html = "";
+    readerList.forEach((name, i) => {
+      const isActive = i === activeReaderIdx;
+      html += `<button class="tqs-chip ${isActive ? "tqs-chip-active" : ""}" data-idx="${i}">@${name}</button>`;
+    });
+    els.readerChips.innerHTML = html;
+
+    // Show who's next
+    const current = readerList[activeReaderIdx];
+    if (dualReaderMode && readerList.length === 2) {
+      els.readerActive.innerHTML = `<span class="tqs-reader-indicator">🎯 Lượt: <strong>@${current}</strong></span>`;
+    } else {
+      els.readerActive.innerHTML = `<span class="tqs-reader-indicator">🎯 @${current}</span>`;
+    }
+  }
+
+  function getActiveReader() {
+    if (readerList.length === 0) return "";
+    return readerList[activeReaderIdx] || readerList[0];
+  }
+
+  function rotateReader() {
+    if (dualReaderMode && readerList.length === 2) {
+      activeReaderIdx = (activeReaderIdx + 1) % 2;
+      renderReaderChips();
+    }
+  }
 
   // ===== UTILITY FUNCTIONS =====
   function showToast(message, type = "success") {
@@ -604,7 +700,7 @@
     const page = els.pageSelect.value;
     const pageName = PRICING_DATA[page].name;
     const customer = els.customerInput.value.trim();
-    const reader = els.readerInput.value.trim();
+    const reader = getActiveReader();
     const note = els.noteInput.value.trim();
 
     let packageDisplay = "";
@@ -656,9 +752,8 @@
       els.customerInput.focus();
       return false;
     }
-    if (!els.readerInput.value.trim()) {
-      showToast("Nhập tên Reader!", "error");
-      els.readerInput.focus();
+    if (readerList.length === 0) {
+      showToast("Thiết lập Reader trước!", "error");
       return false;
     }
 
@@ -767,7 +862,7 @@
       page: els.pageSelect.value,
       pageName: PRICING_DATA[els.pageSelect.value].name,
       customer: els.customerInput.value.trim(),
-      reader: els.readerInput.value.trim(),
+      reader: getActiveReader(),
       service: els.customMode.checked ? "Custom" : els.serviceSelect.value,
       package: els.customMode.checked
         ? els.customName.value.trim()
@@ -785,10 +880,10 @@
     chrome.storage.local.set({
       shiftOrders: shiftOrders,
       shiftStartTime: shiftStartTime,
-      currentReader: els.readerInput.value.trim(),
     });
 
     updateDashboard();
+    rotateReader(); // Switch to next reader in dual mode
   }
 
   // ===== RESET FORM =====
@@ -994,11 +1089,28 @@
   async function loadData() {
     try {
       const data = await chrome.storage.local.get([
-        "currentReader",
+        "savedReaders",
+        "dualReaderMode",
         "shiftOrders",
         "shiftStartTime",
       ]);
-      if (data.currentReader) els.readerInput.value = data.currentReader;
+
+      // Restore readers
+      if (data.savedReaders && Array.isArray(data.savedReaders)) {
+        readerList = data.savedReaders;
+        if (readerList[0]) els.readerInput1.value = readerList[0];
+        if (readerList[1]) els.readerInput2.value = readerList[1];
+      }
+      if (data.dualReaderMode) {
+        dualReaderMode = true;
+        els.dualModeToggle.checked = true;
+        els.readerInput2.classList.remove("tqs-hidden");
+      }
+      if (readerList.length > 0) {
+        activeReaderIdx = 0;
+        renderReaderChips();
+      }
+
       if (data.shiftStartTime) shiftStartTime = data.shiftStartTime;
       if (data.shiftOrders && Array.isArray(data.shiftOrders)) {
         shiftOrders = data.shiftOrders;
@@ -1103,12 +1215,35 @@
     els.customMode.addEventListener("change", toggleCustomMode);
     els.customPrice.addEventListener("input", updatePrice);
 
-    els.readerInput.addEventListener("blur", () => {
-      if (els.readerInput.value.trim()) {
+    // Reader setup events
+    els.readerSetBtn.addEventListener("click", setupReaders);
+
+    els.dualModeToggle.addEventListener("change", () => {
+      dualReaderMode = els.dualModeToggle.checked;
+      els.readerInput2.classList.toggle("tqs-hidden", !dualReaderMode);
+      if (!dualReaderMode && readerList.length > 1) {
+        readerList = [readerList[0]];
+        activeReaderIdx = 0;
+        renderReaderChips();
         chrome.storage.local.set({
-          currentReader: els.readerInput.value.trim(),
+          savedReaders: readerList,
+          dualReaderMode: false,
         });
       }
+    });
+
+    els.readerChips.addEventListener("click", (e) => {
+      const chip = e.target.closest(".tqs-chip");
+      if (!chip) return;
+      activeReaderIdx = parseInt(chip.dataset.idx);
+      renderReaderChips();
+    });
+
+    els.readerInput1.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") setupReaders();
+    });
+    els.readerInput2.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") setupReaders();
     });
 
     els.copySaveBtn.addEventListener("click", copyAndSave);

@@ -1,6 +1,6 @@
 // ===== TAROT QUICKSALE CONTENT SCRIPT V1.1 =====
 (function () {
-  "use strict";
+  ("use strict");
 
   // Check if already injected
   if (document.getElementById("tarot-quicksale-panel")) return;
@@ -143,9 +143,17 @@
   let detectedPage = null;
 
   // Reader state
-  let readerList = [];        // e.g. ['Hậu', 'Mai']
-  let activeReaderIdx = 0;    // current reader index
+  let readerList = []; // e.g. ['Hậu', 'Mai']
+  let activeReaderIdx = 0; // current reader index
   let dualReaderMode = false; // 2-reader shuffle mode
+
+  // Schedule auto-tag state
+  let scheduleSlots = []; // [{startH, startM, endH, endM, readers: ['A','B']}, ...]
+  let scheduleRaw = ""; // raw pasted text
+  let scheduleMode = false; // toggle: true=auto, false=manual
+  let slotReaderIdx = {}; // {slotKey: nextReaderIdx} for multi-reader rotation
+  let scheduleTimerId = null; // setInterval for auto-check
+  const TRANSITION_MINUTES = 5; // minutes before shift end to switch
 
   // ===== DETECT PAGE FROM URL =====
   function detectPageFromURL() {
@@ -176,196 +184,162 @@
 
     return `
       <div class="tqs-header" id="tqs-drag-handle">
-        <span class="tqs-logo">🔮 Tarot QuickSale</span>
-        <div class="tqs-header-right">
-          ${detected ? `<span class="tqs-page-badge">📍 ${PRICING_DATA[detected].name}</span>` : ""}
-          <div class="tqs-header-buttons">
-            <button class="tqs-header-btn tqs-minimize" id="tqs-minimize" title="Thu nhỏ">─</button>
-            <button class="tqs-header-btn tqs-close" id="tqs-close" title="Đóng">✕</button>
-          </div>
+        <div class="tqs-logo">
+          <span class="tqs-logo-icon">🔮</span> Tarot QuickSale
+        </div>
+        <div class="tqs-header-actions">
+          ${detected ? `<span class="tqs-page-badge">${PRICING_DATA[detected].name}</span>` : ""}
+          <button class="tqs-header-btn tqs-minimize" id="tqs-minimize">─</button>
+          <button class="tqs-header-btn tqs-close" id="tqs-close">✕</button>
         </div>
       </div>
 
-      <div class="tqs-book">
-        <!-- ===== LEFT PAGE: Lịch sử ===== -->
-        <div class="tqs-page tqs-page-left">
-          <div class="tqs-page-title">📊 Ca làm việc <span class="tqs-shift-time" id="tqs-shift-time"></span></div>
-
-          <div class="tqs-stats-row">
-            <div class="tqs-stat-pill">
-              <span class="tqs-stat-num" id="tqs-total-orders">0</span>
-              <span class="tqs-stat-lbl">đơn</span>
+      <div class="tqs-body">
+        <!-- LEFT: Stats & History -->
+        <div class="tqs-panel-left">
+          <div class="tqs-stats-grid">
+            <div class="tqs-stat-item">
+              <div class="tqs-stat-val highlight" id="tqs-total-orders">0</div>
+              <div class="tqs-stat-lbl">Đơn</div>
             </div>
-            <div class="tqs-stat-pill">
-              <span class="tqs-stat-num tqs-cyan" id="tqs-total-revenue">0k</span>
-              <span class="tqs-stat-lbl">doanh thu</span>
-            </div>
-            <div class="tqs-stat-pill tqs-stat-accent">
-              <span class="tqs-stat-num" id="tqs-salary">0k</span>
-              <span class="tqs-stat-lbl">lương 5%</span>
+            <div class="tqs-stat-item">
+              <div class="tqs-stat-val" id="tqs-total-revenue">0k</div>
+              <div class="tqs-stat-lbl">Tiền</div>
             </div>
           </div>
-
-          <div class="tqs-page-breakdown" id="tqs-page-breakdown"></div>
-
-          <div class="tqs-order-list-wrap">
-            <div class="tqs-order-list-head">
-              <span>📝 Đơn hàng</span>
-              <button class="tqs-toggle-list" id="tqs-toggle-list">▼</button>
-            </div>
-            <div class="tqs-order-list" id="tqs-order-list">
-              <div class="tqs-order-empty">Chưa có đơn</div>
-            </div>
+          
+          <div class="tqs-history" id="tqs-order-list">
+            <!-- Order items will be injected here -->
+            <div style="padding:16px;text-align:center;color:#64748b;font-size:11px">Chưa có đơn</div>
           </div>
 
           <div class="tqs-left-actions">
-            <button class="tqs-act-btn" id="tqs-report" title="Copy Báo Cáo">📋</button>
-            <button class="tqs-act-btn tqs-act-save" id="tqs-download" title="Lưu TXT">💾</button>
-            <button class="tqs-act-btn" id="tqs-view-history" title="Lịch Sử">📂</button>
-            <button class="tqs-act-btn tqs-act-danger" id="tqs-reset" title="Reset">🔄</button>
+            <button class="tqs-action-btn" id="tqs-report">📋 Báo Cáo</button>
+            <button class="tqs-action-btn" id="tqs-reset">🔄 Reset Ca</button>
           </div>
         </div>
 
-        <!-- ===== SPINE ===== -->
-        <div class="tqs-spine"></div>
+        <!-- RIGHT: Form Controls -->
+        <div class="tqs-panel-right">
+          
+          <!-- READER SECTION -->
+          <div class="tqs-section-label">
+            <span>Reader</span>
+            <span class="tqs-custom-toggle" id="tqs-dual-mode-wrap">
+              <input type="checkbox" id="tqs-dual-mode">
+              <span class="tqs-check"></span> 2R Mode
+            </span>
+          </div>
 
-        <!-- ===== RIGHT PAGE: Soạn đơn ===== -->
-        <div class="tqs-page tqs-page-right">
-          <div class="tqs-page-title">✍️ Soạn đơn</div>
-
-          <!-- Reader Setup -->
-          <div class="tqs-reader-section">
-            <div class="tqs-reader-header">
-              <span class="tqs-reader-title">👤 Reader</span>
-              <label class="tqs-dual-toggle">
-                <input type="checkbox" id="tqs-dual-mode">
-                <span class="tqs-dual-label">2 Reader</span>
-              </label>
-            </div>
-            <div class="tqs-reader-setup">
-              <div class="tqs-reader-inputs">
-                <input type="text" class="tqs-input tqs-reader-input" id="tqs-reader-1" placeholder="Reader 1">
-                <input type="text" class="tqs-input tqs-reader-input tqs-hidden" id="tqs-reader-2" placeholder="Reader 2">
+          <div class="tqs-reader-card" id="tqs-reader-card">
+            <div class="tqs-reader-info">
+              <div class="tqs-reader-avatar">👤</div>
+              <div>
+                <div class="tqs-reader-name" id="tqs-active-reader-name">Chưa chọn</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                   <div style="font-size:10px;color:#64748b" id="tqs-reader-status">Nhập tên hoặc paste lịch</div>
+                   <label class="tqs-custom-toggle" style="transform:scale(0.8);margin:0" title="Bật/Tắt Lịch">
+                      <input type="checkbox" id="tqs-schedule-mode-toggle">
+                      <span class="tqs-check"></span> Auto
+                   </label>
+                </div>
               </div>
-              <button class="tqs-reader-set-btn" id="tqs-reader-set" title="Lưu">✓</button>
             </div>
-            <div class="tqs-reader-chips" id="tqs-reader-chips"></div>
-            <div class="tqs-reader-active" id="tqs-reader-active"></div>
+            <div class="tqs-reader-actions">
+              <button class="tqs-icon-action" id="tqs-schedule-btn" title="Paste Lịch">📅</button>
+              <button class="tqs-icon-action" id="tqs-manual-config-btn" title="Sửa tên">✏️</button>
+            </div>
           </div>
 
-          <div class="tqs-form-group">
-            <label>Page</label>
-            <select class="tqs-select" id="tqs-page">
-              <option value="CA" ${detected === "CA" ? "selected" : ""}>Cá</option>
-              <option value="DUA" ${detected === "DUA" ? "selected" : ""}>Dừa</option>
-              <option value="POBO" ${detected === "POBO" ? "selected" : ""}>Pờ Bơ</option>
-            </select>
+          <!-- HIDDEN CONFIGS -->
+          <div id="tqs-manual-inputs" class="tqs-input-group tqs-hidden" style="margin-top:8px">
+            <input type="text" class="tqs-input" id="tqs-reader-1" placeholder="Tên Reader 1">
+            <input type="text" class="tqs-input tqs-hidden" id="tqs-reader-2" placeholder="Tên Reader 2 (nếu 2R)">
+            <button class="tqs-btn tqs-btn-secondary" id="tqs-reader-save" style="padding:6px">Lưu tên Reader</button>
           </div>
 
-          <div class="tqs-form-group">
-            <label>Khách hàng</label>
-            <input type="text" class="tqs-input" id="tqs-customer" placeholder="Tên khách">
+          <!-- FORM INPUTS -->
+          <div class="tqs-section-label" style="margin-top:4px">Đơn Hàng</div>
+          
+          <div class="tqs-input-group">
+            <input type="text" class="tqs-input" id="tqs-customer" placeholder="Tên Khách Hàng">
           </div>
 
-          <div class="tqs-form-row">
-            <div class="tqs-form-group">
-              <label>Dịch vụ</label>
+          <div class="tqs-row">
+            <div class="tqs-col">
               <select class="tqs-select" id="tqs-service">
-                <option value="">-- Chọn --</option>
+                <option value="">-- Dịch vụ --</option>
               </select>
             </div>
-            <div class="tqs-form-group">
-              <label>Gói</label>
+            <div class="tqs-col">
               <select class="tqs-select" id="tqs-package">
-                <option value="">-- Chọn --</option>
+                <option value="">-- Gói --</option>
               </select>
             </div>
           </div>
 
-          <div class="tqs-custom-section">
-            <label class="tqs-checkbox-label">
-              <input type="checkbox" id="tqs-custom-mode">
-              <span class="tqs-checkmark"></span>
-              Custom
-            </label>
-            <div class="tqs-custom-inputs tqs-hidden" id="tqs-custom-inputs">
-              <div class="tqs-form-row">
-                <div class="tqs-form-group">
-                  <label>Gói</label>
-                  <input type="text" class="tqs-input" id="tqs-custom-name" placeholder="3C CS TÂY">
-                </div>
-                <div class="tqs-form-group">
-                  <label>Giá</label>
-                  <input type="number" class="tqs-input" id="tqs-custom-price" placeholder="50">
-                </div>
-              </div>
-            </div>
+          <div class="tqs-section-label" style="margin-top:4px">Tùy Chọn</div>
+          
+          <label class="tqs-custom-toggle">
+            <input type="checkbox" id="tqs-custom-mode">
+            <span class="tqs-check"></span> Gói tùy chỉnh (Custom)
+          </label>
+
+          <div id="tqs-custom-inputs" class="tqs-hidden tqs-row" style="margin-top:8px">
+             <input type="text" class="tqs-input" id="tqs-custom-name" placeholder="Tên gói custom" style="flex:2">
+             <input type="number" class="tqs-input" id="tqs-custom-price" placeholder="Giá" style="flex:1">
           </div>
 
-          <div class="tqs-form-group">
-            <label>Ghi chú</label>
-            <input type="text" class="tqs-input" id="tqs-note" placeholder="(tùy chọn)">
+          <input type="text" class="tqs-input" id="tqs-note" placeholder="Ghi chú thêm..." style="margin-top:8px">
+
+          <!-- ACTIONS -->
+          <div class="tqs-price-tag" id="tqs-price">0k</div>
+
+          <div class="tqs-main-actions">
+            <button class="tqs-btn tqs-btn-primary" id="tqs-copy-save">📋 Copy & Lưu</button>
+            <button class="tqs-btn tqs-btn-secondary" id="tqs-send-msg">📤 Gửi Msg</button>
           </div>
 
-          <div class="tqs-price-bar">
-            <span class="tqs-price-value" id="tqs-price">0k</span>
+          <!-- Platform Selector (subtle) -->
+          <div class="tqs-platform-row" style="margin-top:4px; opacity:0.6; transform:scale(0.9); transform-origin:left center">
+             <label class="tqs-platform-btn"><input type="radio" name="platform" value="facebook" checked> FB</label>
+             <label class="tqs-platform-btn"><input type="radio" name="platform" value="messenger"> Msg</label>
           </div>
 
-          <div class="tqs-platform-row">
-            <label class="tqs-platform-btn">
-              <input type="radio" name="platform" value="facebook" checked>
-              <span>FB Msg</span>
-            </label>
-            <label class="tqs-platform-btn">
-              <input type="radio" name="platform" value="messenger">
-              <span>Messenger</span>
-            </label>
-          </div>
+        </div>
+      </div>
 
-          <div class="tqs-send-row">
-            <button class="tqs-btn-copy" id="tqs-copy-save">📋 COPY</button>
-            <button class="tqs-btn-send" id="tqs-send-msg">📤 GỬI</button>
+      <!-- EDIT MODAL -->
+      <div class="tqs-edit-overlay tqs-hidden" id="tqs-edit-modal">
+        <div class="tqs-edit-card">
+          <div class="tqs-edit-title">✏️ Sửa đơn</div>
+          <input type="text" class="tqs-input" id="tqs-edit-customer" placeholder="Khách">
+          <div class="tqs-row">
+             <input type="text" class="tqs-input" id="tqs-edit-reader" placeholder="Reader">
+             <input type="number" class="tqs-input" id="tqs-edit-price" placeholder="Giá">
+          </div>
+          <input type="text" class="tqs-input" id="tqs-edit-package" placeholder="Gói">
+          <input type="text" class="tqs-input" id="tqs-edit-note" placeholder="Note">
+          <div class="tqs-edit-btns">
+            <button class="tqs-ebtn tqs-ebtn-cancel" id="tqs-edit-cancel">Hủy</button>
+            <button class="tqs-ebtn tqs-ebtn-save" id="tqs-edit-save">Lưu</button>
           </div>
         </div>
       </div>
 
-      <!-- ===== EDIT MODAL ===== -->
-      <div class="tqs-edit-overlay tqs-hidden" id="tqs-edit-modal">
-        <div class="tqs-edit-card">
-          <div class="tqs-edit-title">✏️ Sửa đơn</div>
-          <div class="tqs-form-group">
-            <label>Khách hàng</label>
-            <input type="text" class="tqs-input" id="tqs-edit-customer">
-          </div>
-          <div class="tqs-form-row">
-            <div class="tqs-form-group">
-              <label>Reader</label>
-              <input type="text" class="tqs-input" id="tqs-edit-reader">
-            </div>
-            <div class="tqs-form-group">
-              <label>Giá (k)</label>
-              <input type="number" class="tqs-input" id="tqs-edit-price">
-            </div>
-          </div>
-          <div class="tqs-form-row">
-            <div class="tqs-form-group">
-              <label>Gói</label>
-              <input type="text" class="tqs-input" id="tqs-edit-package">
-            </div>
-            <div class="tqs-form-group">
-              <label>Ghi chú</label>
-              <input type="text" class="tqs-input" id="tqs-edit-note">
-            </div>
-          </div>
+      <!-- SCHEDULE MODAL -->
+      <div class="tqs-modal tqs-hidden" id="tqs-schedule-modal">
+        <div class="tqs-modal-content">
+          <div class="tqs-edit-title">📅 Cập nhật lịch làm việc</div>
+          <textarea class="tqs-textarea" id="tqs-schedule-input" placeholder="Paste lịch ca vào đây..."></textarea>
           <div class="tqs-edit-btns">
-            <button class="tqs-ebtn tqs-ebtn-cancel" id="tqs-edit-cancel">Hủy</button>
-            <button class="tqs-ebtn tqs-ebtn-save" id="tqs-edit-save">✓ Lưu</button>
+            <button class="tqs-ebtn tqs-ebtn-cancel" id="tqs-schedule-close">Đóng</button>
+            <button class="tqs-ebtn tqs-ebtn-save" id="tqs-schedule-parse">Cập nhật</button>
           </div>
         </div>
       </div>
     `;
   }
-
   // ===== CREATE TOAST =====
   function createToast() {
     const toast = document.createElement("div");
@@ -406,35 +380,43 @@
     header: panel.querySelector("#tqs-drag-handle"),
     closeBtn: panel.querySelector("#tqs-close"),
     minimizeBtn: panel.querySelector("#tqs-minimize"),
-    pageSelect: panel.querySelector("#tqs-page"),
-    readerInput1: panel.querySelector("#tqs-reader-1"),
-    readerInput2: panel.querySelector("#tqs-reader-2"),
-    readerSetBtn: panel.querySelector("#tqs-reader-set"),
-    readerChips: panel.querySelector("#tqs-reader-chips"),
-    readerActive: panel.querySelector("#tqs-reader-active"),
+
+    // Left Panel
+    totalOrders: panel.querySelector("#tqs-total-orders"),
+    totalRevenue: panel.querySelector("#tqs-total-revenue"),
+    orderList: panel.querySelector("#tqs-order-list"),
+    reportBtn: panel.querySelector("#tqs-report"),
+    resetBtn: panel.querySelector("#tqs-reset"),
+
+    // Reader Section
+    readerCard: panel.querySelector("#tqs-reader-card"),
+    activeReaderName: panel.querySelector("#tqs-active-reader-name"),
+    readerStatus: panel.querySelector("#tqs-reader-status"),
+    scheduleBtn: panel.querySelector("#tqs-schedule-btn"),
+    manualConfigBtn: panel.querySelector("#tqs-manual-config-btn"),
+
     dualModeToggle: panel.querySelector("#tqs-dual-mode"),
+    manualInputs: panel.querySelector("#tqs-manual-inputs"),
+    reader1Input: panel.querySelector("#tqs-reader-1"),
+    reader2Input: panel.querySelector("#tqs-reader-2"),
+    readerSaveBtn: panel.querySelector("#tqs-reader-save"),
+
+    // Form
     customerInput: panel.querySelector("#tqs-customer"),
     serviceSelect: panel.querySelector("#tqs-service"),
     packageSelect: panel.querySelector("#tqs-package"),
+    noteInput: panel.querySelector("#tqs-note"),
+
     customMode: panel.querySelector("#tqs-custom-mode"),
     customInputs: panel.querySelector("#tqs-custom-inputs"),
     customName: panel.querySelector("#tqs-custom-name"),
     customPrice: panel.querySelector("#tqs-custom-price"),
-    noteInput: panel.querySelector("#tqs-note"),
+
     priceDisplay: panel.querySelector("#tqs-price"),
     copySaveBtn: panel.querySelector("#tqs-copy-save"),
     sendMsgBtn: panel.querySelector("#tqs-send-msg"),
-    totalOrders: panel.querySelector("#tqs-total-orders"),
-    totalRevenue: panel.querySelector("#tqs-total-revenue"),
-    salary: panel.querySelector("#tqs-salary"),
-    resetBtn: panel.querySelector("#tqs-reset"),
-    reportBtn: panel.querySelector("#tqs-report"),
-    downloadBtn: panel.querySelector("#tqs-download"),
-    historyBtn: panel.querySelector("#tqs-view-history"),
-    pageBreakdown: panel.querySelector("#tqs-page-breakdown"),
-    shiftTimeEl: panel.querySelector("#tqs-shift-time"),
-    orderList: panel.querySelector("#tqs-order-list"),
-    toggleListBtn: panel.querySelector("#tqs-toggle-list"),
+
+    // Modals
     editModal: panel.querySelector("#tqs-edit-modal"),
     editCustomer: panel.querySelector("#tqs-edit-customer"),
     editReader: panel.querySelector("#tqs-edit-reader"),
@@ -443,73 +425,246 @@
     editNote: panel.querySelector("#tqs-edit-note"),
     editCancel: panel.querySelector("#tqs-edit-cancel"),
     editSave: panel.querySelector("#tqs-edit-save"),
+
+    scheduleModal: panel.querySelector("#tqs-schedule-modal"),
+    scheduleInput: panel.querySelector("#tqs-schedule-input"),
+    scheduleClose: panel.querySelector("#tqs-schedule-close"),
+    scheduleParse: panel.querySelector("#tqs-schedule-parse"),
+
+    scheduleModeToggle: panel.querySelector("#tqs-schedule-mode-toggle"),
+
     toast: document.querySelector("#tqs-toast"),
     toggleBtn: document.querySelector("#tarot-quicksale-toggle"),
   };
 
   let editingOrderId = null;
 
-  // ===== READER MANAGEMENT =====
+  // ===== READER LOGIC =====
+  function getActiveReader() {
+    // 1. Try Schedule First (Only if enabled)
+    if (scheduleMode && scheduleSlots.length > 0) {
+      const slotData = getScheduleReader();
+      if (slotData) return slotData;
+    }
+
+    // 2. Fallback to Manual
+    if (readerList.length > 0) {
+      return readerList[activeReaderIdx] || readerList[0];
+    }
+    return "Chưa set tên";
+  }
+
+  function updateReaderDisplay() {
+    const reader = getActiveReader();
+    const isSchedule =
+      scheduleMode && scheduleSlots.length > 0 && getCurrentSlot();
+
+    if (els.activeReaderName) {
+      els.activeReaderName.textContent = reader.startsWith("@")
+        ? reader
+        : "@" + reader;
+      els.activeReaderName.style.color = isSchedule
+        ? "var(--amber)"
+        : "var(--accent)";
+    }
+
+    if (els.readerStatus) {
+      if (isSchedule) {
+        const result = getCurrentSlot();
+        if (result) {
+          els.readerStatus.textContent = `📅 Theo lịch (${result.slot.startH}h-${result.slot.endH}h)`;
+        }
+      } else {
+        els.readerStatus.textContent = "✏️ Chế độ thủ công";
+      }
+    }
+  }
+
   function setupReaders() {
-    const r1 = els.readerInput1.value.trim();
-    const r2 = els.readerInput2.value.trim();
+    const r1 = els.reader1Input ? els.reader1Input.value.trim() : "";
+    const r2 = els.reader2Input ? els.reader2Input.value.trim() : "";
 
     readerList = [];
     if (r1) readerList.push(r1);
     if (dualReaderMode && r2) readerList.push(r2);
 
-    if (readerList.length === 0) {
-      showToast("Nhập tên Reader!", "error");
-      return;
-    }
-
     activeReaderIdx = 0;
+
     chrome.storage.local.set({
       savedReaders: readerList,
       dualReaderMode: dualReaderMode,
     });
 
-    renderReaderChips();
-    showToast(`✓ ${readerList.length} reader`);
+    if (els.manualInputs) els.manualInputs.classList.add("tqs-hidden");
+    updateReaderDisplay();
+    showToast(`✓ Đã lưu ${readerList.length} Reader`);
   }
 
-  function renderReaderChips() {
-    if (readerList.length === 0) {
-      els.readerChips.innerHTML = "";
-      els.readerActive.innerHTML = "";
-      return;
+  function rotateReader() {
+    if (scheduleSlots.length > 0) {
+      rotateScheduleReader();
+    } else if (dualReaderMode && readerList.length > 1) {
+      activeReaderIdx = (activeReaderIdx + 1) % readerList.length;
+    }
+    updateReaderDisplay();
+  }
+
+  // ===== SCHEDULE AUTO-TAG SYSTEM =====
+  function parseSchedule(text) {
+    const lines = text.split("\n").filter((l) => l.trim());
+    const slots = [];
+
+    for (const line of lines) {
+      // Match time pattern: Xh - Yh or X:MM - Y:MM or X -> Y
+      // Separator can be -, –, or > or ->
+      const timeMatch = line.match(
+        /(\d{1,2})(?:h|:(\d{2}))?\s*(?:[-–]|->?)\s*(\d{1,2})(?:h|:(\d{2}))?/i,
+      );
+      if (!timeMatch) continue;
+
+      const startH = parseInt(timeMatch[1]);
+      const startM = parseInt(timeMatch[2]) || 0;
+      const endH = parseInt(timeMatch[3]);
+      const endM = parseInt(timeMatch[4]) || 0;
+
+      // Extract reader names from the ENTIRE line (location agnostic)
+      // Regex: match @Name
+      // We look for @ followed by at least 2 chars of name, ending at separator or end of line.
+      const readerMatches =
+        line.match(/@([a-zA-ZÀ-ỹ0-9\s']{2,})(?=$|[-–,;(\n✨@:])/g) ||
+        line.match(/@[^\s@][^@]*/g); // fallback
+
+      if (!readerMatches || readerMatches.length === 0) continue;
+
+      const readers = readerMatches
+        .map((r) => r.replace(/^@/, "").trim())
+        .filter((r) => r.length > 0);
+
+      if (readers.length === 0) continue;
+
+      slots.push({ startH, startM, endH, endM, readers });
     }
 
-    let html = "";
-    readerList.forEach((name, i) => {
-      const isActive = i === activeReaderIdx;
-      html += `<button class="tqs-chip ${isActive ? "tqs-chip-active" : ""}" data-idx="${i}">@${name}</button>`;
+    // Sort by start time (handle overnight: treat 0-7h as 24-31h for sorting)
+    slots.sort((a, b) => {
+      const aStart = a.startH < 8 ? a.startH + 24 : a.startH;
+      const bStart = b.startH < 8 ? b.startH + 24 : b.startH;
+      return aStart * 60 + a.startM - (bStart * 60 + b.startM);
     });
-    els.readerChips.innerHTML = html;
 
-    // Show who's next
-    const current = readerList[activeReaderIdx];
-    if (dualReaderMode && readerList.length === 2) {
-      els.readerActive.innerHTML = `<span class="tqs-reader-indicator">🎯 Lượt: <strong>@${current}</strong></span>`;
-    } else {
-      els.readerActive.innerHTML = `<span class="tqs-reader-indicator">🎯 @${current}</span>`;
-    }
+    return slots;
   }
 
-  function getActiveReader() {
+  /**
+   * Convert slot time to today's Date (handle overnight)
+   */
+  function slotToDate(hour, minute, isEnd, startH) {
+    const now = new Date();
+    const d = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      hour,
+      minute,
+      0,
+    );
+    // If end time < start time, it's next day (e.g., 23h - 2h)
+    if (isEnd && hour < startH) {
+      d.setDate(d.getDate() + 1);
+    }
+    // If current time is past midnight and we're looking at an evening slot
+    if (now.getHours() < 8 && hour >= 20) {
+      d.setDate(d.getDate() - 1); // slot was yesterday
+    }
+    return d;
+  }
+
+  /**
+   * Get the CURRENT active slot based on time, with 5-min pre-transition
+   * Returns: { slot, slotIdx, isTransition, nextSlot } or null
+   */
+  function getCurrentSlot() {
+    if (scheduleSlots.length === 0) return null;
+
+    const now = new Date();
+
+    for (let i = 0; i < scheduleSlots.length; i++) {
+      const slot = scheduleSlots[i];
+      const slotStart = slotToDate(
+        slot.startH,
+        slot.startM,
+        false,
+        slot.startH,
+      );
+      const slotEnd = slotToDate(slot.endH, slot.endM, true, slot.startH);
+      const transitionPoint = new Date(
+        slotEnd.getTime() - TRANSITION_MINUTES * 60 * 1000,
+      );
+
+      if (now >= slotStart && now < slotEnd) {
+        // We're in this slot
+        if (now >= transitionPoint) {
+          // In transition zone - use NEXT slot's readers
+          const nextSlot = scheduleSlots[i + 1] || null;
+          if (nextSlot) {
+            return {
+              slot: nextSlot,
+              slotIdx: i + 1,
+              isTransition: true,
+              currentSlot: slot,
+              nextSlot,
+            };
+          }
+        }
+        return {
+          slot,
+          slotIdx: i,
+          isTransition: false,
+          currentSlot: slot,
+          nextSlot: scheduleSlots[i + 1] || null,
+        };
+      }
+    }
+
+    // No slot matches - might be before first or after last
+    return null;
+  }
+
+  /**
+   * Get the current reader based on schedule
+   */
+  function getScheduleReader() {
+    const result = getCurrentSlot();
+    if (!result) return getManualReader();
+
+    const { slot, slotIdx } = result;
+    const key = `slot_${slotIdx}`;
+
+    if (slot.readers.length === 1) {
+      return slot.readers[0];
+    }
+
+    // Multi-reader: use rotation
+    const idx = slotReaderIdx[key] || 0;
+    return slot.readers[idx % slot.readers.length];
+  }
+
+  function getManualReader() {
     if (readerList.length === 0) return "";
     return readerList[activeReaderIdx] || readerList[0];
   }
 
-  function rotateReader() {
-    if (dualReaderMode && readerList.length === 2) {
-      activeReaderIdx = (activeReaderIdx + 1) % 2;
-      renderReaderChips();
-    }
+  function startScheduleTimer() {
+    if (scheduleTimerId) clearInterval(scheduleTimerId);
+    scheduleTimerId = setInterval(() => {
+      updateReaderDisplay();
+    }, 60000);
+    updateReaderDisplay();
   }
 
   // ===== UTILITY FUNCTIONS =====
   function showToast(message, type = "success") {
+    if (!els.toast) return;
     els.toast.textContent = message;
     els.toast.className =
       "tqs-toast tqs-show" + (type !== "success" ? " tqs-" + type : "");
@@ -520,7 +675,8 @@
 
   // ===== DROPDOWN LOGIC =====
   function populateServices() {
-    const page = els.pageSelect.value;
+    const page = detectedPage;
+    if (!page || !PRICING_DATA[page]) return;
     const services = PRICING_DATA[page].services;
 
     els.serviceSelect.innerHTML = '<option value="">-- Chọn --</option>';
@@ -534,7 +690,8 @@
   }
 
   function populatePackages() {
-    const page = els.pageSelect.value;
+    const page = detectedPage;
+    if (!page || !PRICING_DATA[page]) return;
     const service = els.serviceSelect.value;
 
     els.packageSelect.innerHTML = '<option value="">-- Chọn --</option>';
@@ -546,6 +703,7 @@
     }
 
     const packages = PRICING_DATA[page].services[service];
+    if (!packages) return;
     Object.entries(packages).forEach(([pkg, price]) => {
       els.packageSelect.innerHTML += `<option value="${pkg}" data-price="${price}">${pkg} - ${price}k</option>`;
     });
@@ -555,63 +713,44 @@
   }
 
   function updatePrice() {
-    if (els.customMode.checked) {
-      currentPrice = parseInt(els.customPrice.value) || 0;
+    if (els.customMode && els.customMode.checked) {
+      currentPrice = parseInt(els.customPrice?.value) || 0;
     } else {
-      const opt = els.packageSelect.options[els.packageSelect.selectedIndex];
+      const opt = els.packageSelect?.options[els.packageSelect.selectedIndex];
       currentPrice = opt && opt.dataset.price ? parseInt(opt.dataset.price) : 0;
     }
-    els.priceDisplay.textContent = currentPrice + "k";
+    if (els.priceDisplay) els.priceDisplay.textContent = currentPrice + "k";
+  }
+
+  function rotateScheduleReader() {
+    const result = getCurrentSlot();
+    if (!result || result.slot.readers.length <= 1) return;
+
+    const key = `slot_${result.slotIdx}`;
+    const current = slotReaderIdx[key] || 0;
+    slotReaderIdx[key] = (current + 1) % result.slot.readers.length;
+    updateReaderDisplay();
   }
 
   // ===== TOGGLE CUSTOM MODE =====
   function toggleCustomMode() {
+    if (!els.customMode) return;
     const isCustom = els.customMode.checked;
-    els.customInputs.classList.toggle("tqs-hidden", !isCustom);
-    els.serviceSelect.disabled = isCustom;
-    els.packageSelect.disabled = isCustom;
-
-    if (isCustom) {
-      updatePrice();
-    } else {
-      updatePrice();
-    }
+    if (els.customInputs)
+      els.customInputs.classList.toggle("tqs-hidden", !isCustom);
+    if (els.serviceSelect) els.serviceSelect.disabled = isCustom;
+    if (els.packageSelect) els.packageSelect.disabled = isCustom;
+    updatePrice();
   }
 
   // ===== DASHBOARD =====
   function updateDashboard() {
     const total = shiftOrders.length;
     const revenue = shiftOrders.reduce((s, o) => s + o.price, 0);
-    const salary = Math.floor(revenue * 0.05);
 
-    els.totalOrders.textContent = total;
-    els.totalRevenue.textContent = revenue + "k";
-    els.salary.textContent = salary + "k";
+    if (els.totalOrders) els.totalOrders.textContent = total;
+    if (els.totalRevenue) els.totalRevenue.textContent = revenue + "k";
 
-    // Per-page breakdown
-    const byPage = {};
-    shiftOrders.forEach((o) => {
-      if (!byPage[o.pageName]) byPage[o.pageName] = { count: 0, revenue: 0 };
-      byPage[o.pageName].count++;
-      byPage[o.pageName].revenue += o.price;
-    });
-
-    let breakdownHTML = "";
-    for (const [page, data] of Object.entries(byPage)) {
-      breakdownHTML += `<div class="tqs-breakdown-row">
-        <span class="tqs-breakdown-page">${page}</span>
-        <span class="tqs-breakdown-info">${data.count} đơn • ${data.revenue}k</span>
-      </div>`;
-    }
-    els.pageBreakdown.innerHTML = breakdownHTML;
-
-    // Shift time
-    if (shiftStartTime) {
-      const start = new Date(shiftStartTime);
-      els.shiftTimeEl.textContent = `(${start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })})`;
-    }
-
-    // Render order list
     renderOrderList();
   }
 
@@ -666,42 +805,57 @@
     els.editModal.classList.remove("tqs-hidden");
   }
 
-  function saveEditOrder() {
-    const idx = shiftOrders.findIndex((o) => o.id === editingOrderId);
-    if (idx === -1) return;
+  async function saveEditOrder() {
+    if (editingOrderId === null) return;
 
-    shiftOrders[idx].customer = els.editCustomer.value.trim();
-    shiftOrders[idx].reader = els.editReader.value.trim();
-    shiftOrders[idx].packageDisplay = els.editPackage.value.trim();
-    shiftOrders[idx].price = parseInt(els.editPrice.value) || 0;
-    shiftOrders[idx].note = els.editNote.value.trim();
+    // Read latest from storage to avoid overwriting other tabs
+    const data = await chrome.storage.local.get(["shiftOrders"]);
+    const latest = data.shiftOrders || [];
+    const idx = latest.findIndex((o) => o.id === editingOrderId);
+    if (idx === -1) {
+      showToast("Đơn không tồn tại!", "error");
+      els.editModal.classList.add("tqs-hidden");
+      editingOrderId = null;
+      return;
+    }
 
-    chrome.storage.local.set({ shiftOrders });
+    latest[idx].customer = els.editCustomer.value.trim();
+    latest[idx].reader = els.editReader.value.trim();
+    latest[idx].packageDisplay = els.editPackage.value.trim();
+    latest[idx].price = parseInt(els.editPrice.value) || 0;
+    latest[idx].note = els.editNote.value.trim();
+
+    shiftOrders = latest;
+    await chrome.storage.local.set({ shiftOrders });
     els.editModal.classList.add("tqs-hidden");
     editingOrderId = null;
     updateDashboard();
     showToast("✓ Đã sửa!");
   }
 
-  function deleteOrder(id) {
-    const idx = shiftOrders.findIndex((o) => o.id === id);
+  async function deleteOrder(id) {
+    // Read latest from storage
+    const data = await chrome.storage.local.get(["shiftOrders"]);
+    const latest = data.shiftOrders || [];
+    const idx = latest.findIndex((o) => o.id === id);
     if (idx === -1) return;
-    const o = shiftOrders[idx];
+    const o = latest[idx];
     if (!confirm(`Xóa đơn: ${o.customer} - ${o.price}k?`)) return;
 
-    shiftOrders.splice(idx, 1);
-    chrome.storage.local.set({ shiftOrders });
+    latest.splice(idx, 1);
+    shiftOrders = latest;
+    await chrome.storage.local.set({ shiftOrders });
     updateDashboard();
     showToast("✓ Đã xóa!");
   }
 
   // ===== GENERATE MESSAGE =====
   function generateMessage() {
-    const page = els.pageSelect.value;
-    const pageName = PRICING_DATA[page].name;
-    const customer = els.customerInput.value.trim();
+    const page = detectedPage;
+    const pageName = PRICING_DATA[page]?.name || page;
+    const customer = (els.customerInput?.value || "").trim();
     const reader = getActiveReader();
-    const note = els.noteInput.value.trim();
+    const note = (els.noteInput?.value || "").trim();
 
     let packageDisplay = "";
 
@@ -747,12 +901,15 @@
 
   // ===== VALIDATE FORM =====
   function validateForm() {
-    if (!els.customerInput.value.trim()) {
+    if (!els.customerInput || !els.customerInput.value.trim()) {
       showToast("Nhập tên khách!", "error");
-      els.customerInput.focus();
+      if (els.customerInput) els.customerInput.focus();
       return false;
     }
-    if (readerList.length === 0) {
+    if (
+      readerList.length === 0 &&
+      !(scheduleMode && scheduleSlots.length > 0)
+    ) {
       showToast("Thiết lập Reader trước!", "error");
       return false;
     }
@@ -850,17 +1007,16 @@
     }
   }
 
-  // ===== SAVE ORDER =====
-  function saveOrder() {
-    // Start shift timer on first order
+  // ===== SAVE ORDER (atomic read-write for multi-tab safety) =====
+  async function saveOrder() {
     if (!shiftStartTime) {
       shiftStartTime = new Date().toISOString();
     }
 
     const order = {
       id: Date.now(),
-      page: els.pageSelect.value,
-      pageName: PRICING_DATA[els.pageSelect.value].name,
+      page: detectedPage,
+      pageName: PRICING_DATA[detectedPage]?.name || detectedPage,
       customer: els.customerInput.value.trim(),
       reader: getActiveReader(),
       service: els.customMode.checked ? "Custom" : els.serviceSelect.value,
@@ -875,31 +1031,41 @@
       timestamp: new Date().toISOString(),
     };
 
-    shiftOrders.push(order);
+    // Read latest from storage to merge with other tabs
+    const data = await chrome.storage.local.get([
+      "shiftOrders",
+      "shiftStartTime",
+    ]);
+    const latest = data.shiftOrders || [];
+    latest.push(order);
+    shiftOrders = latest;
+    if (!shiftStartTime && data.shiftStartTime)
+      shiftStartTime = data.shiftStartTime;
 
-    chrome.storage.local.set({
+    await chrome.storage.local.set({
       shiftOrders: shiftOrders,
       shiftStartTime: shiftStartTime,
     });
 
     updateDashboard();
-    rotateReader(); // Switch to next reader in dual mode
+    rotateReader();
   }
 
   // ===== RESET FORM =====
   function resetForm() {
-    els.customerInput.value = "";
-    if (!els.customMode.checked) {
-      els.serviceSelect.value = "";
-      els.packageSelect.innerHTML = '<option value="">-- Chọn --</option>';
+    if (els.customerInput) els.customerInput.value = "";
+    if (els.customMode && !els.customMode.checked) {
+      if (els.serviceSelect) els.serviceSelect.value = "";
+      if (els.packageSelect)
+        els.packageSelect.innerHTML = '<option value="">-- Chọn --</option>';
     } else {
-      els.customName.value = "";
-      els.customPrice.value = "";
+      if (els.customName) els.customName.value = "";
+      if (els.customPrice) els.customPrice.value = "";
     }
-    els.noteInput.value = "";
+    if (els.noteInput) els.noteInput.value = "";
     currentPrice = 0;
-    els.priceDisplay.textContent = "0k";
-    els.customerInput.focus();
+    if (els.priceDisplay) els.priceDisplay.textContent = "0k";
+    if (els.customerInput) els.customerInput.focus();
   }
 
   // ===== BUILD REPORT =====
@@ -1091,33 +1257,57 @@
       const data = await chrome.storage.local.get([
         "savedReaders",
         "dualReaderMode",
+        "schedule", // Raw text
+        "scheduleSlots",
+        "scheduleMode",
         "shiftOrders",
         "shiftStartTime",
       ]);
 
-      // Restore readers
+      // Restore Manual Readers
       if (data.savedReaders && Array.isArray(data.savedReaders)) {
         readerList = data.savedReaders;
-        if (readerList[0]) els.readerInput1.value = readerList[0];
-        if (readerList[1]) els.readerInput2.value = readerList[1];
-      }
-      if (data.dualReaderMode) {
-        dualReaderMode = true;
-        els.dualModeToggle.checked = true;
-        els.readerInput2.classList.remove("tqs-hidden");
-      }
-      if (readerList.length > 0) {
-        activeReaderIdx = 0;
-        renderReaderChips();
+        if (els.reader1Input) els.reader1Input.value = readerList[0] || "";
+        if (els.reader2Input) els.reader2Input.value = readerList[1] || "";
       }
 
+      // Restore Dual Mode
+      if (data.dualReaderMode) {
+        dualReaderMode = true;
+        if (els.dualModeToggle) els.dualModeToggle.checked = true;
+        if (els.reader2Input) els.reader2Input.classList.remove("tqs-hidden");
+      }
+
+      // Restore Schedule
+      if (data.schedule) {
+        scheduleRaw = data.schedule;
+        if (els.scheduleInput) els.scheduleInput.value = scheduleRaw;
+      }
+      if (data.scheduleSlots && Array.isArray(data.scheduleSlots)) {
+        scheduleSlots = data.scheduleSlots;
+        slotReaderIdx = {};
+        startScheduleTimer();
+      }
+
+      // Restore Schedule Mode
+      if (typeof data.scheduleMode !== "undefined") {
+        scheduleMode = data.scheduleMode;
+      } else {
+        // Default to true if schedule exists
+        scheduleMode = scheduleSlots.length > 0;
+      }
+      if (els.scheduleModeToggle) els.scheduleModeToggle.checked = scheduleMode;
+
+      // Restore Shift Data
       if (data.shiftStartTime) shiftStartTime = data.shiftStartTime;
       if (data.shiftOrders && Array.isArray(data.shiftOrders)) {
         shiftOrders = data.shiftOrders;
-        updateDashboard();
       }
+
+      updateReaderDisplay();
+      updateDashboard();
     } catch (err) {
-      console.error(err);
+      console.error("Load Error:", err);
     }
   }
 
@@ -1208,83 +1398,173 @@
 
   // ===== EVENT LISTENERS =====
   function initEvents() {
-    els.pageSelect.addEventListener("change", populateServices);
-    els.serviceSelect.addEventListener("change", populatePackages);
-    els.packageSelect.addEventListener("change", updatePrice);
+    // 1. Core Actions
+    if (els.serviceSelect)
+      els.serviceSelect.addEventListener("change", populatePackages);
+    if (els.packageSelect)
+      els.packageSelect.addEventListener("change", updatePrice);
 
-    els.customMode.addEventListener("change", toggleCustomMode);
-    els.customPrice.addEventListener("input", updatePrice);
+    // 2. Custom Mode
+    if (els.customMode)
+      els.customMode.addEventListener("change", toggleCustomMode);
+    if (els.customPrice) els.customPrice.addEventListener("input", updatePrice);
 
-    // Reader setup events
-    els.readerSetBtn.addEventListener("click", setupReaders);
+    // 3. Reader Logic
+    if (els.scheduleBtn) {
+      els.scheduleBtn.addEventListener("click", () => {
+        els.scheduleModal.classList.remove("tqs-hidden");
+        els.scheduleInput.focus();
+      });
+    }
 
-    els.dualModeToggle.addEventListener("change", () => {
-      dualReaderMode = els.dualModeToggle.checked;
-      els.readerInput2.classList.toggle("tqs-hidden", !dualReaderMode);
-      if (!dualReaderMode && readerList.length > 1) {
-        readerList = [readerList[0]];
-        activeReaderIdx = 0;
-        renderReaderChips();
-        chrome.storage.local.set({
-          savedReaders: readerList,
-          dualReaderMode: false,
-        });
+    if (els.manualConfigBtn) {
+      els.manualConfigBtn.addEventListener("click", () => {
+        els.manualInputs.classList.toggle("tqs-hidden");
+      });
+    }
+
+    if (els.readerSaveBtn) {
+      els.readerSaveBtn.addEventListener("click", setupReaders);
+    }
+
+    if (els.dualModeToggle) {
+      els.dualModeToggle.addEventListener("change", () => {
+        dualReaderMode = els.dualModeToggle.checked;
+        if (els.reader2Input)
+          els.reader2Input.classList.toggle("tqs-hidden", !dualReaderMode);
+        chrome.storage.local.set({ dualReaderMode });
+
+        // If switching OFF and we manually had 2 readers, reset to 1
+        if (!dualReaderMode && readerList.length > 1) {
+          setupReaders();
+        }
+      });
+    }
+
+    // 4. Schedule Events
+    if (els.scheduleModeToggle) {
+      els.scheduleModeToggle.addEventListener("change", () => {
+        scheduleMode = els.scheduleModeToggle.checked;
+        chrome.storage.local.set({ scheduleMode });
+        updateReaderDisplay();
+      });
+    }
+
+    if (els.scheduleClose) {
+      els.scheduleClose.addEventListener("click", () => {
+        els.scheduleModal.classList.add("tqs-hidden");
+      });
+    }
+
+    if (els.scheduleParse) {
+      els.scheduleParse.addEventListener("click", () => {
+        const text = els.scheduleInput.value;
+        console.log("[TQS] Parsing schedule text length:", text.length);
+
+        const slots = parseSchedule(text);
+        console.log("[TQS] Parsed slots:", slots);
+
+        if (slots.length > 0) {
+          scheduleRaw = text;
+          scheduleSlots = slots;
+          scheduleMode = true;
+
+          if (els.scheduleModeToggle) els.scheduleModeToggle.checked = true;
+
+          chrome.storage.local.set({
+            schedule: text,
+            scheduleSlots: slots,
+            scheduleMode: true,
+          });
+
+          showToast(`✓ Đã nhận ${slots.length} ca làm việc`);
+          els.scheduleModal.classList.add("tqs-hidden");
+
+          startScheduleTimer();
+          updateReaderDisplay();
+        } else {
+          console.warn("[TQS] Parse failed. Input text:", text);
+          showToast("⚠️ Không tìm thấy ca/reader nào!", "error");
+        }
+      });
+    }
+
+    // 5. Main Buttons
+    if (els.copySaveBtn) els.copySaveBtn.addEventListener("click", copyAndSave);
+    if (els.sendMsgBtn)
+      els.sendMsgBtn.addEventListener("click", sendToMessenger);
+    if (els.resetBtn) els.resetBtn.addEventListener("click", resetShift);
+    if (els.reportBtn) els.reportBtn.addEventListener("click", copyReport);
+    if (els.downloadBtn)
+      els.downloadBtn.addEventListener("click", downloadReport);
+    if (els.historyBtn) els.historyBtn.addEventListener("click", viewHistory);
+
+    // 6. List Interaction (Event Delegation)
+    if (els.orderList) {
+      els.orderList.addEventListener("click", (e) => {
+        const editBtn = e.target.closest(".tqs-edit-btn");
+        const deleteBtn = e.target.closest(".tqs-delete-btn");
+        if (editBtn) openEditOrder(parseInt(editBtn.dataset.id));
+        if (deleteBtn) deleteOrder(parseInt(deleteBtn.dataset.id));
+      });
+    }
+
+    // 7. Edit Modal
+    if (els.editSave) els.editSave.addEventListener("click", saveEditOrder);
+    if (els.editCancel) {
+      els.editCancel.addEventListener("click", () => {
+        els.editModal.classList.add("tqs-hidden");
+        editingOrderId = null;
+      });
+    }
+
+    // 7. Shortcuts
+    const handleEnter = (e, callback) => {
+      if (e.key === "Enter") callback();
+    };
+
+    if (els.customerInput) {
+      els.customerInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") els.serviceSelect.focus();
+      });
+    }
+    if (els.noteInput)
+      els.noteInput.addEventListener("keypress", (e) =>
+        handleEnter(e, copyAndSave),
+      );
+    if (els.customPrice)
+      els.customPrice.addEventListener("keypress", (e) =>
+        handleEnter(e, copyAndSave),
+      );
+  }
+
+  // ===== CROSS-TAB SYNC (critical for multi-page) =====
+  if (
+    typeof chrome !== "undefined" &&
+    chrome.storage &&
+    chrome.storage.onChanged
+  ) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (changes.shiftOrders) {
+        shiftOrders = changes.shiftOrders.newValue || [];
+        updateDashboard();
       }
-    });
-
-    els.readerChips.addEventListener("click", (e) => {
-      const chip = e.target.closest(".tqs-chip");
-      if (!chip) return;
-      activeReaderIdx = parseInt(chip.dataset.idx);
-      renderReaderChips();
-    });
-
-    els.readerInput1.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") setupReaders();
-    });
-    els.readerInput2.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") setupReaders();
-    });
-
-    els.copySaveBtn.addEventListener("click", copyAndSave);
-    els.sendMsgBtn.addEventListener("click", sendToMessenger);
-    els.resetBtn.addEventListener("click", resetShift);
-    els.reportBtn.addEventListener("click", copyReport);
-    els.downloadBtn.addEventListener("click", downloadReport);
-    els.historyBtn.addEventListener("click", viewHistory);
-
-    // Order list: toggle, edit, delete
-    els.toggleListBtn.addEventListener("click", () => {
-      els.orderList.classList.toggle("tqs-collapsed");
-      els.toggleListBtn.textContent = els.orderList.classList.contains(
-        "tqs-collapsed",
-      )
-        ? "▶"
-        : "▼";
-    });
-
-    els.orderList.addEventListener("click", (e) => {
-      const editBtn = e.target.closest(".tqs-edit-btn");
-      const deleteBtn = e.target.closest(".tqs-delete-btn");
-      if (editBtn) openEditOrder(parseInt(editBtn.dataset.id));
-      if (deleteBtn) deleteOrder(parseInt(deleteBtn.dataset.id));
-    });
-
-    els.editSave.addEventListener("click", saveEditOrder);
-    els.editCancel.addEventListener("click", () => {
-      els.editModal.classList.add("tqs-hidden");
-      editingOrderId = null;
-    });
-
-    // Enter key shortcuts
-    els.customerInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") els.serviceSelect.focus();
-    });
-    els.noteInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") copyAndSave();
-    });
-    els.customPrice.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") copyAndSave();
+      if (changes.scheduleSlots) {
+        scheduleSlots = changes.scheduleSlots.newValue || [];
+        slotReaderIdx = {};
+        updateReaderDisplay();
+      }
+      if (changes.scheduleMode) {
+        scheduleMode = changes.scheduleMode.newValue;
+        if (els.scheduleModeToggle)
+          els.scheduleModeToggle.checked = scheduleMode;
+        updateReaderDisplay();
+      }
+      if (changes.savedReaders) {
+        readerList = changes.savedReaders.newValue || [];
+        updateReaderDisplay();
+      }
     });
   }
 
@@ -1306,9 +1586,8 @@
     initDrag();
     initControls();
     initEvents();
-    els.customerInput.focus();
+    if (els.customerInput) els.customerInput.focus();
 
-    // Check for pending message on Messenger
     checkPendingMessage();
   }
 

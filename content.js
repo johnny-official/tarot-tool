@@ -568,6 +568,8 @@ VD:
     const key = `slot_${result.slotIdx}`;
     slotReaderIdx[key] =
       ((slotReaderIdx[key] || 0) + 1) % result.slot.readers.length;
+    // IMMEDIATE write — critical for cross-tab sync
+    chrome.storage.local.set({ slotReaderIdx: { ...slotReaderIdx } });
     updateReaderDisplay();
   }
 
@@ -778,7 +780,8 @@ VD:
       }
     }
 
-    let msg = `🔮[${pageName}] ${packageDisplay} - ${currentPrice}k 👤${customer} @${reader}`;
+    const pageIcon = PRICING_DATA[page]?.icon || "🔮";
+    let msg = `${pageIcon}[${pageName}] ${packageDisplay} - ${currentPrice}k 👤${customer} @${reader}`;
     if (note) msg += ` ${note}`;
     return msg;
   }

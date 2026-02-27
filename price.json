@@ -3,6 +3,7 @@
 
   "CA": {
     "name": "CÁ",
+    "icon": "🐟",
     "color": "cyan",
     "services": {
       "Câu Lẻ": {
@@ -27,6 +28,7 @@
 
   "DUA": {
     "name": "DỪA",
+    "icon": "🥥",
     "color": "amber",
     "services": {
       "Trải Tarot": {
@@ -76,6 +78,7 @@
 
   "POBO": {
     "name": "PỜ BƠ",
+    "icon": "🧈",
     "color": "purple",
     "services": {
       "Tarot": {

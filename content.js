@@ -4,12 +4,8 @@
 
   if (document.getElementById("tarot-quicksale-panel")) return;
 
-  // ===== PAGE DETECTION CONFIG =====
-  const PAGE_IDS = {
-    918768421315641: "POBO",
-    513140915211900: "DUA",
-    105889999207829: "CA",
-  };
+  // ===== PAGE DETECTION (loaded from config.json) =====
+  let PAGE_IDS = {};
 
   // ===== STATE =====
   let PRICING_DATA = {}; // loaded from price.json
@@ -1390,6 +1386,25 @@ VD:
 
   // ===== INIT =====
   async function init() {
+    // Load config (PAGE_IDS)
+    try {
+      const cfgUrl = chrome.runtime.getURL("config.json");
+      const cfgRes = await fetch(cfgUrl);
+      const cfg = await cfgRes.json();
+      if (cfg.pages) {
+        PAGE_IDS = {};
+        for (const [key, val] of Object.entries(cfg.pages)) {
+          PAGE_IDS[val.fbPageId] = key;
+        }
+      }
+    } catch {
+      showToast("⚠️ Thiếu config.json!", "error");
+    }
+
+    // Re-detect page now that PAGE_IDS is loaded
+    detectedPage = detectPageFromURL();
+
+    // Load pricing
     try {
       PRICING_DATA = await loadPricingData();
     } catch {

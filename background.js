@@ -3,15 +3,30 @@ chrome.action.onClicked.addListener((tab) => {
   chrome.tabs.sendMessage(tab.id, { action: "togglePanel" });
 });
 
-const MESSENGER_URLS = {
-  facebook: "https://www.facebook.com/messages/t/623973524119607",
-  messenger: "https://www.messenger.com/t/8164573853616965",
-};
+// ===== Load config (Page IDs, Chat IDs) from config.json =====
+let MESSENGER_URLS = { facebook: "", messenger: "" };
+let CHAT_IDS = { facebook: "", messenger: "" };
 
-const CHAT_IDS = {
-  facebook: "623973524119607",
-  messenger: "8164573853616965",
-};
+async function loadConfig() {
+  try {
+    const url = chrome.runtime.getURL("config.json");
+    const res = await fetch(url);
+    const cfg = await res.json();
+    const fb = cfg.messenger.facebookChatId;
+    const msg = cfg.messenger.messengerChatId;
+    CHAT_IDS = { facebook: fb, messenger: msg };
+    MESSENGER_URLS = {
+      facebook: `https://www.facebook.com/messages/t/${fb}`,
+      messenger: `https://www.messenger.com/t/${msg}`,
+    };
+  } catch {
+    // config.json missing — use empty (send button will fail gracefully)
+  }
+}
+
+// Init
+loadConfig();
+
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === "instantSend") {

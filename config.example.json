@@ -1,0 +1,23 @@
+{
+  "_comment": "=== CẤU HÌNH TAROT QUICKSALE === Copy file này thành config.json và điền thông tin của bạn.",
+
+  "pages": {
+    "POBO": { "fbPageId": "YOUR_POBO_PAGE_ID", "name": "PỜ BƠ" },
+    "DUA":  { "fbPageId": "YOUR_DUA_PAGE_ID",  "name": "DỪA"   },
+    "CA":   { "fbPageId": "YOUR_CA_PAGE_ID",   "name": "CÁ"    }
+  },
+
+  "messenger": {
+    "facebookChatId":  "YOUR_FACEBOOK_GROUP_CHAT_ID",
+    "messengerChatId": "YOUR_MESSENGER_GROUP_CHAT_ID"
+  },
+
+  "settings": {
+    "salaryPercent": 5,
+    "shiftHistoryMax": 30,
+    "toastDurationMs": 2500,
+    "scheduleCheckIntervalMs": 60000,
+    "messengerReadyDelayMs": 1000,
+    "newTabWaitMs": 2000
+  }
+}

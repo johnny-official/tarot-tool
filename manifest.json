@@ -34,7 +34,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["messenger.js", "price.json"],
+      "resources": ["messenger.js", "price.json", "config.json"],
       "matches": [
         "https://www.facebook.com/*",
         "https://www.messenger.com/*",

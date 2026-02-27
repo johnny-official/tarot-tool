@@ -465,7 +465,8 @@ VD:
       rotateScheduleReader();
     } else if (readerList.length > 1) {
       activeReaderIdx = (activeReaderIdx + 1) % readerList.length;
-      syncSave({ activeReaderIdx });
+      // IMMEDIATE write — critical for cross-tab sync
+      chrome.storage.local.set({ activeReaderIdx });
     }
     updateReaderDisplay();
   }
@@ -777,7 +778,7 @@ VD:
       }
     }
 
-    let msg = `[${pageName}] ${packageDisplay} - ${currentPrice}k ${customer} @${reader}`;
+    let msg = `🔮[${pageName}] ${packageDisplay} - ${currentPrice}k 👤${customer} @${reader}`;
     if (note) msg += ` ${note}`;
     return msg;
   }
@@ -855,7 +856,7 @@ VD:
     await chrome.storage.local.set({
       shiftOrders,
       shiftStartTime,
-      activeReaderIdx,
+      // NOTE: activeReaderIdx is written by rotateReader() separately
     });
     updateDashboard();
   }
@@ -943,11 +944,16 @@ VD:
     }
   }
 
-  // ===== DEBOUNCED SYNC SAVE =====
+  // ===== SYNC SAVE (debounced, merges keys) =====
+  let _syncPending = {};
   let _syncTimer = null;
   function syncSave(data) {
+    Object.assign(_syncPending, data);
     clearTimeout(_syncTimer);
-    _syncTimer = setTimeout(() => chrome.storage.local.set(data), 200);
+    _syncTimer = setTimeout(() => {
+      chrome.storage.local.set({ ..._syncPending });
+      _syncPending = {};
+    }, 200);
   }
 
   // ===== BUILD REPORT =====

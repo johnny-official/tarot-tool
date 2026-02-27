@@ -1,11 +1,9 @@
-// ===== MESSENGER HELPER =====
+// Messenger helper — injected into messenger.com / facebook.com/messages
 (function () {
   "use strict";
 
   if (window._tqsLoaded) return;
   window._tqsLoaded = true;
-
-  console.log("[TQS] Loaded:", window.location.href);
 
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.action === "typeAndSend") {
@@ -21,12 +19,8 @@
   });
 
   async function typeAndSend(message) {
-    console.log("[TQS] Starting...");
-
     const input = await waitForInput();
-    if (!input) {
-      return { success: false, error: "Khong tim thay o chat" };
-    }
+    if (!input) return { success: false, error: "Không tìm thấy ô chat" };
 
     input.focus();
     await sleep(100);
@@ -41,20 +35,17 @@
       await sleep(200);
     }
 
-    console.log("[TQS] Text inserted");
-
-    const enterEvent = new KeyboardEvent("keydown", {
-      key: "Enter",
-      code: "Enter",
-      keyCode: 13,
-      which: 13,
-      shiftKey: false,
-      bubbles: true,
-      cancelable: true,
-    });
-
-    input.dispatchEvent(enterEvent);
-    console.log("[TQS] Sent");
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        keyCode: 13,
+        which: 13,
+        shiftKey: false,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
 
     await sleep(500);
     return { success: true };
@@ -64,10 +55,9 @@
     const selectors = [
       'div[role="textbox"][contenteditable="true"]',
       'div[contenteditable="true"][data-lexical-editor]',
-      'div[aria-label*="tin nh\u1eafn"][contenteditable]',
+      'div[aria-label*="tin nhắn"][contenteditable]',
       'div[aria-label*="Message"][contenteditable]',
     ];
-
     for (let i = 0; i < 10; i++) {
       for (const sel of selectors) {
         const el = document.querySelector(sel);
@@ -82,17 +72,17 @@
     return new Promise((r) => setTimeout(r, ms));
   }
 
+  // Auto-handle pending messages on load
   async function checkPending() {
-    await sleep(2500);
+    await sleep(1000);
     try {
       const data = await chrome.storage.local.get(["pendingMessage"]);
       if (data.pendingMessage) {
         const result = await typeAndSend(data.pendingMessage);
-        if (result.success) {
+        if (result.success)
           await chrome.storage.local.remove(["pendingMessage"]);
-        }
       }
-    } catch (e) {}
+    } catch {}
   }
 
   checkPending();

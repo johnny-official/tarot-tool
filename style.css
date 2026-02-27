@@ -206,6 +206,17 @@ body {
   font-weight: 700;
   color: var(--accent-green);
   text-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+  transition: all 0.2s ease;
+}
+
+.price-value.has-price {
+  animation: popup-price-pulse 0.35s ease;
+}
+
+@keyframes popup-price-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.12); text-shadow: 0 0 20px rgba(74, 222, 128, 0.6); }
+  100% { transform: scale(1); }
 }
 
 .btn-primary {
@@ -311,6 +322,16 @@ body {
 .btn-secondary:hover {
   background: var(--border-color);
   border-color: var(--accent-cyan);
+}
+
+/* ===== Page Badge on Popup ===== */
+.page-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 /* ===== Toast Notification ===== */

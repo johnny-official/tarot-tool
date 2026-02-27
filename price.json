@@ -1,90 +1,111 @@
 {
-  "Nha_Dua_Tarot": {
-    "Goi_Trai_Bai_Tarot": {
-      "1_Cau_Yes_no": "9k",
-      "3_Cau_Co_Ban": "40k",
-      "6_Cau_Co_Ban": "65k",
-      "1_Cau_Chi_Tiet": "20k",
-      "3_Cau_Chi_Tiet": "55k",
-      "4_Cau_Chi_Tiet": "70k",
-      "6_Cau_Chi_Tiet": "100k"
-    },
-    "Tarot_Lenormand": {
-      "1_Cau_Yes_no": "15k",
-      "3_Cau_Co_Ban": "60k",
-      "6_Cau_Co_Ban": "95k",
-      "1_Cau_Chi_Tiet": "30k",
-      "3_Cau_Chi_Tiet": "85k",
-      "4_Cau_Chi_Tiet": "110k",
-      "6_Cau_Chi_Tiet": "155k"
-    },
-    "Tarot_Bai_Tay": {
-      "1_Cau_Yes_no": "20k",
-      "3_Cau_Co_Ban": "70k",
-      "6_Cau_Co_Ban": "115k",
-      "1_Cau_Chi_Tiet": "40k",
-      "3_Cau_Chi_Tiet": "110k",
-      "4_Cau_Chi_Tiet": "145k",
-      "6_Cau_Chi_Tiet": "210k"
-    },
-    "Goi_Hoi_Thoi_Gian": {
-      "Goi_30_Phut": {
-        "Tarot": "140k",
-        "Lenormand": "160k",
-        "Bai_Tay": "200k"
+  "_comment": "=== BẢNG GIÁ TAROT QUICKSALE === Sửa file này để update giá. Đơn vị: nghìn đồng (k). Reload extension để áp dụng.",
+
+  "CA": {
+    "name": "CÁ",
+    "color": "cyan",
+    "services": {
+      "Câu Lẻ": {
+        "Y/N": 9,
+        "CS Tarot": 20,
+        "CS Đặc Biệt": 25
       },
-      "Goi_45_Phut": {
-        "Tarot": "200k",
-        "Lenormand": "230k",
-        "Bai_Tay": "280k"
+      "Combo 3 Câu": {
+        "CS Tarot": 50,
+        "CS Đặc Biệt": 70
       },
-      "Goi_60_Phut": { "Tarot": "270k", "Lenormand": "300k", "Bai_Tay": "380k" }
+      "Combo 4 Câu": {
+        "CS Tarot": 65,
+        "CS Đặc Biệt": 85
+      },
+      "Combo Full 6 Câu": {
+        "CS Tarot": 90,
+        "CS Đặc Biệt": 120
+      }
     }
   },
-  "Ca_Tarot": {
-    "Cau_Le": {
-      "Cau_Yes_No": "9k",
-      "Trai_Chuyen_Sau_Tarot": "20k",
-      "Trai_Chuyen_Sau_Dac_Biet": "25k"
-    },
-    "Combo_3_Cau": {
-      "Trai_Chuyen_Sau_Tarot": "50k",
-      "Trai_Chuyen_Sau_Dac_Biet": "70k"
-    },
-    "Combo_Full_6_Cau": {
-      "Trai_Chuyen_Sau_Tarot": "90k",
-      "Trai_Chuyen_Sau_Dac_Biet": "120k"
-    },
-    "Ghi_Chu": "Trải Đặc Biệt kết hợp Tarot và Lenormand giúp đào sâu vấn đề."
+
+  "DUA": {
+    "name": "DỪA",
+    "color": "amber",
+    "services": {
+      "Trải Tarot": {
+        "1 Y/N": 9,
+        "3 CB": 40,
+        "6 CB": 65,
+        "1 CS": 20,
+        "3 CS": 55,
+        "4 CS": 70,
+        "6 CS": 100
+      },
+      "Lenormand": {
+        "1 Y/N": 15,
+        "3 CB": 60,
+        "6 CB": 95,
+        "1 CS": 30,
+        "3 CS": 85,
+        "4 CS": 110,
+        "6 CS": 155
+      },
+      "Bài Tây": {
+        "1 Y/N": 20,
+        "3 CB": 70,
+        "6 CB": 115,
+        "1 CS": 40,
+        "3 CS": 110,
+        "4 CS": 145,
+        "6 CS": 210
+      },
+      "⏱ Gói 30 Phút": {
+        "Tarot": 140,
+        "Lenormand": 160,
+        "Bài Tây": 200
+      },
+      "⏱ Gói 45 Phút": {
+        "Tarot": 200,
+        "Lenormand": 230,
+        "Bài Tây": 280
+      },
+      "⏱ Gói 60 Phút": {
+        "Tarot": 270,
+        "Lenormand": 300,
+        "Bài Tây": 380
+      }
+    }
   },
-  "Po_Bo_Tarot": {
-    "Goi_Trai_Bai_Tarot": {
-      "1_cau_yes_no": "9k",
-      "1_cau_chuyen_sau": "20k",
-      "3_cau_chuyen_sau": "55k",
-      "5_cau_chuyen_sau": "85k",
-      "7_cau_chuyen_sau": "115k"
-    },
-    "Goi_Trai_Bai_Lenormand": {
-      "1_cau_yes_no": "12k",
-      "1_cau_chuyen_sau": "25k",
-      "3_cau_chuyen_sau": "70k",
-      "5_cau_chuyen_sau": "110k",
-      "7_cau_chuyen_sau": "145k"
-    },
-    "Goi_Trai_Bai_Tay": {
-      "1_cau_yes_no": "18k",
-      "1_cau_chuyen_sau": "35k",
-      "3_cau_chuyen_sau": "95k",
-      "5_cau_chuyen_sau": "155k",
-      "7_cau_chuyen_sau": "200k"
-    },
-    "Goi_Thoi_Gian": {
-      "Goi_30p": "150k",
-      "Goi_45p": "200k",
-      "Goi_60p": "250k",
-      "Phu_Phi_Lenormand": "15k",
-      "Phu_Phi_Bai_Tay": "20k"
+
+  "POBO": {
+    "name": "PỜ BƠ",
+    "color": "purple",
+    "services": {
+      "Tarot": {
+        "1 Y/N": 9,
+        "1 CS": 20,
+        "3 CS": 55,
+        "5 CS": 85,
+        "7 CS": 115
+      },
+      "Lenormand": {
+        "1 Y/N": 12,
+        "1 CS": 25,
+        "3 CS": 70,
+        "5 CS": 110,
+        "7 CS": 145
+      },
+      "Bài Tây": {
+        "1 Y/N": 18,
+        "1 CS": 35,
+        "3 CS": 95,
+        "5 CS": 155,
+        "7 CS": 200
+      },
+      "⏱ Gói Thời Gian": {
+        "30 Phút": 150,
+        "45 Phút": 200,
+        "60 Phút": 250,
+        "+ Lenormand": 15,
+        "+ Bài Tây": 20
+      }
     }
   }
 }

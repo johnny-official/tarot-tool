@@ -1,102 +1,5 @@
-// ===== DATA STRUCTURE =====
-const PRICING_DATA = {
-  CA: {
-    name: "Cá",
-    services: {
-      "Gói 1 Câu": {
-        "Y/N": 9,
-        "Chuyên Sâu": 20,
-        "Đặc Biệt": 25,
-      },
-      "Gói 3 Câu": {
-        "Chuyên Sâu": 50,
-        "Đặc Biệt": 70,
-      },
-      "Gói 4 Câu": {
-        "Chuyên Sâu": 65,
-        "Đặc Biệt": 85,
-      },
-      "Gói 6 Câu": {
-        "Chuyên Sâu": 90,
-        "Đặc Biệt": 120,
-      },
-    },
-  },
-  DUA: {
-    name: "Dừa",
-    services: {
-      Tarot: {
-        "1Y/N": 9,
-        "1CT": 20,
-        "3CT": 55,
-        "6CT": 100,
-      },
-      Lenormand: {
-        "1Y/N": 15,
-        "1CT": 30,
-        "3CT": 85,
-      },
-      "Tarot+Lenor": {
-        "1Y/N": 15,
-        "3CT": 85,
-        "6CT": 155,
-      },
-      "Bài Tây": {
-        "1Y/N": 20,
-        "1CT": 40,
-        "3CT": 110,
-      },
-    },
-  },
-  POBO: {
-    name: "Pờ Bơ",
-    services: {
-      Tarot: {
-        "1Y/N": 9,
-        "1CT": 20,
-        "3CT": 55,
-        "5CT": 85,
-        "7CT": 115,
-      },
-      Lenormand: {
-        "1Y/N": 12,
-        "1CT": 25,
-        "3CT": 70,
-        "5CT": 110,
-      },
-      "Bài Tây": {
-        "1Y/N": 18,
-        "1CT": 35,
-        "3CT": 95,
-        "5CT": 155,
-      },
-    },
-  },
-};
-
-// Abbreviation mappings
-const ABBREVIATIONS = {
-  Tarot: "TA",
-  Lenormand: "LENOR",
-  "Tarot+Lenor": "TALE",
-  "Bài Tây": "BT",
-  "Gói 1 Câu": "1C",
-  "Gói 3 Câu": "3C",
-  "Gói 4 Câu": "4C",
-  "Gói 6 Câu": "6C",
-  "Chuyên Sâu": "CT",
-  "Đặc Biệt": "ĐB",
-  "Y/N": "Y/N",
-  "1Y/N": "1Y/N",
-  "1CT": "1CT",
-  "3CT": "3CT",
-  "5CT": "5CT",
-  "6CT": "6CT",
-  "7CT": "7CT",
-};
-
 // ===== DOM ELEMENTS =====
-const elements = {
+const els = {
   pageSelect: document.getElementById("pageSelect"),
   readerName: document.getElementById("readerName"),
   customerName: document.getElementById("customerName"),
@@ -115,221 +18,226 @@ const elements = {
 };
 
 // ===== STATE =====
+let PRICING_DATA = {}; // loaded from price.json
 let currentPrice = 0;
 let shiftOrders = [];
+let resetPending = false;
 
-// ===== UTILITY FUNCTIONS =====
-function showToast(message, type = "success") {
-  elements.toast.textContent = message;
-  elements.toast.className = "toast show " + type;
-  setTimeout(() => {
-    elements.toast.className = "toast";
-  }, 2500);
-}
-
-function formatPrice(price) {
-  return price + "k";
-}
+// Abbreviation mappings — only entries that actually shorten the text
+const ABBREVIATIONS = {
+  "Trải Tarot": "TA",
+  Tarot: "TA",
+  Lenormand: "LENOR",
+  "Bài Tây": "TÂY",
+  "Câu Lẻ": "",
+  "Combo 3 Câu": "3C",
+  "Combo 4 Câu": "4C",
+  "Combo Full 6 Câu": "6C",
+  "⏱ Gói 30 Phút": "30p",
+  "⏱ Gói 45 Phút": "45p",
+  "⏱ Gói 60 Phút": "60p",
+  "⏱ Gói Thời Gian": "",
+  "CS Đặc Biệt": "ĐB",
+  "CS Tarot": "CS",
+};
 
 function getAbbreviation(text) {
-  return ABBREVIATIONS[text] || text;
+  return text in ABBREVIATIONS ? ABBREVIATIONS[text] : text;
+}
+
+// ===== TOAST =====
+let _toastTimer = null;
+function showToast(message, type = "success") {
+  clearTimeout(_toastTimer);
+  els.toast.textContent = message;
+  els.toast.className = "toast show " + type;
+  _toastTimer = setTimeout(() => {
+    els.toast.className = "toast";
+  }, 2500);
 }
 
 // ===== DROPDOWN POPULATION =====
 function populateServiceGroups() {
-  const page = elements.pageSelect.value;
-  const services = PRICING_DATA[page].services;
+  const page = els.pageSelect.value;
+  const services = PRICING_DATA[page]?.services;
+  if (!services) return;
 
-  elements.serviceGroup.innerHTML = '<option value="">-- Chọn nhóm --</option>';
+  const frag = document.createDocumentFragment();
+  const defaultOpt = document.createElement("option");
+  defaultOpt.value = "";
+  defaultOpt.textContent = "-- Chọn nhóm --";
+  frag.appendChild(defaultOpt);
 
-  Object.keys(services).forEach((service) => {
-    const option = document.createElement("option");
-    option.value = service;
-    option.textContent = service;
-    elements.serviceGroup.appendChild(option);
+  Object.keys(services).forEach((s) => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    frag.appendChild(opt);
   });
 
-  // Reset package dropdown
-  elements.packageSelect.innerHTML = '<option value="">-- Chọn gói --</option>';
+  els.serviceGroup.innerHTML = "";
+  els.serviceGroup.appendChild(frag);
+  els.packageSelect.innerHTML = '<option value="">-- Chọn gói --</option>';
   currentPrice = 0;
-  elements.priceDisplay.textContent = "0k";
+  els.priceDisplay.textContent = "0k";
+
+  // Persist page selection
+  chrome.storage.local.set({ currentPage: page });
 }
 
 function populatePackages() {
-  const page = elements.pageSelect.value;
-  const serviceGroup = elements.serviceGroup.value;
+  const page = els.pageSelect.value;
+  const service = els.serviceGroup.value;
 
-  elements.packageSelect.innerHTML = '<option value="">-- Chọn gói --</option>';
-
-  if (!serviceGroup) {
-    currentPrice = 0;
-    elements.priceDisplay.textContent = "0k";
-    return;
-  }
-
-  const packages = PRICING_DATA[page].services[serviceGroup];
-
-  Object.entries(packages).forEach(([pkg, price]) => {
-    const option = document.createElement("option");
-    option.value = pkg;
-    option.textContent = `${pkg} - ${price}k`;
-    option.dataset.price = price;
-    elements.packageSelect.appendChild(option);
-  });
-
+  els.packageSelect.innerHTML = '<option value="">-- Chọn gói --</option>';
   currentPrice = 0;
-  elements.priceDisplay.textContent = "0k";
+  els.priceDisplay.textContent = "0k";
+
+  if (!service) return;
+
+  const packages = PRICING_DATA[page]?.services?.[service];
+  if (!packages) return;
+
+  const frag = document.createDocumentFragment();
+  Object.entries(packages).forEach(([pkg, price]) => {
+    const opt = document.createElement("option");
+    opt.value = pkg;
+    opt.textContent = `${pkg} — ${price}k`;
+    opt.dataset.price = price;
+    frag.appendChild(opt);
+  });
+  els.packageSelect.appendChild(frag);
 }
 
 function updatePrice() {
-  const selectedOption =
-    elements.packageSelect.options[elements.packageSelect.selectedIndex];
-
-  if (selectedOption && selectedOption.dataset.price) {
-    currentPrice = parseInt(selectedOption.dataset.price);
-    elements.priceDisplay.textContent = formatPrice(currentPrice);
+  const opt = els.packageSelect.options[els.packageSelect.selectedIndex];
+  currentPrice = opt?.dataset.price ? parseInt(opt.dataset.price) : 0;
+  els.priceDisplay.textContent = currentPrice + "k";
+  if (currentPrice > 0) {
+    els.priceDisplay.classList.add("has-price");
   } else {
-    currentPrice = 0;
-    elements.priceDisplay.textContent = "0k";
+    els.priceDisplay.classList.remove("has-price");
   }
 }
 
-// ===== DASHBOARD UPDATE =====
+// ===== DASHBOARD =====
 function updateDashboard() {
-  const totalOrders = shiftOrders.length;
-  const totalRevenue = shiftOrders.reduce((sum, order) => sum + order.price, 0);
-  const salary = Math.floor(totalRevenue * 0.05);
-
-  elements.totalOrders.textContent = totalOrders;
-  elements.totalRevenue.textContent = formatPrice(totalRevenue);
-  elements.salaryValue.textContent = formatPrice(salary);
+  const totalRevenue = shiftOrders.reduce((s, o) => s + o.price, 0);
+  els.totalOrders.textContent = shiftOrders.length;
+  els.totalRevenue.textContent = totalRevenue + "k";
+  els.salaryValue.textContent = Math.floor(totalRevenue * 0.05) + "k";
 }
 
 // ===== GENERATE MESSAGE =====
 function generateMessage() {
-  const page = elements.pageSelect.value;
-  const pageName = PRICING_DATA[page].name;
-  const serviceGroup = elements.serviceGroup.value;
-  const packageName = elements.packageSelect.value;
-  const customerName = elements.customerName.value.trim();
-  const readerName = elements.readerName.value.trim();
-  const showCards = elements.showCards.checked;
-  const note = elements.noteInput.value.trim();
+  const page = els.pageSelect.value;
+  const pageName = PRICING_DATA[page]?.name || page;
+  const serviceGroup = els.serviceGroup.value;
+  const packageName = els.packageSelect.value;
+  const customerName = els.customerName.value.trim();
+  const readerName = els.readerName.value.trim();
+  const showCards = els.showCards.checked;
+  const note = els.noteInput.value.trim();
 
-  // Build abbreviated package name
   const serviceAbbr = getAbbreviation(serviceGroup);
   const packageAbbr = getAbbreviation(packageName);
-  const fullAbbr = `${serviceAbbr} ${packageAbbr}`;
+  const fullAbbr = [serviceAbbr, packageAbbr].filter(Boolean).join(" ");
 
-  let message = `[${pageName}] ${fullAbbr} - ${currentPrice}k\n`;
-  message += `KH: ${customerName}\n`;
-  message += `Reader: @${readerName}`;
-
-  if (showCards) {
-    message += "\n(Có Show bài)";
-  }
-
-  if (note) {
-    message += `\nNote: ${note}`;
-  }
-
-  return message;
+  let msg = `[${pageName}] ${fullAbbr} - ${currentPrice}k\nKH: ${customerName}\nReader: @${readerName}`;
+  if (showCards) msg += "\n(Có Show bài)";
+  if (note) msg += `\nNote: ${note}`;
+  return msg;
 }
 
-// ===== COPY AND SAVE =====
+// ===== COPY & SAVE =====
 async function copyAndSave() {
-  // Validation
-  if (!elements.customerName.value.trim()) {
-    showToast("Vui lòng nhập tên khách hàng!", "error");
-    elements.customerName.focus();
+  const customer = els.customerName.value.trim();
+  const reader = els.readerName.value.trim();
+
+  if (!customer) {
+    showToast("Nhập tên khách hàng!", "error");
+    els.customerName.focus();
     return;
   }
-
-  if (!elements.readerName.value.trim()) {
-    showToast("Vui lòng nhập tên Reader!", "error");
-    elements.readerName.focus();
+  if (!reader) {
+    showToast("Nhập tên Reader!", "error");
+    els.readerName.focus();
     return;
   }
-
-  if (!elements.serviceGroup.value) {
-    showToast("Vui lòng chọn nhóm dịch vụ!", "error");
+  if (!els.serviceGroup.value) {
+    showToast("Chọn nhóm dịch vụ!", "error");
     return;
   }
-
-  if (!elements.packageSelect.value) {
-    showToast("Vui lòng chọn gói!", "error");
+  if (!els.packageSelect.value) {
+    showToast("Chọn gói!", "error");
     return;
   }
 
   const message = generateMessage();
 
   try {
-    // Copy to clipboard
     await navigator.clipboard.writeText(message);
 
-    // Save order
     const order = {
       id: Date.now(),
-      page: elements.pageSelect.value,
-      pageName: PRICING_DATA[elements.pageSelect.value].name,
-      customer: elements.customerName.value.trim(),
-      reader: elements.readerName.value.trim(),
-      serviceGroup: elements.serviceGroup.value,
-      package: elements.packageSelect.value,
+      page: els.pageSelect.value,
+      pageName: PRICING_DATA[els.pageSelect.value]?.name,
+      customer,
+      reader,
+      serviceGroup: els.serviceGroup.value,
+      package: els.packageSelect.value,
       price: currentPrice,
-      showCards: elements.showCards.checked,
-      note: elements.noteInput.value.trim(),
+      showCards: els.showCards.checked,
+      note: els.noteInput.value.trim(),
       timestamp: new Date().toISOString(),
     };
 
     shiftOrders.push(order);
-
-    // Save to storage
-    await chrome.storage.local.set({
-      shiftOrders: shiftOrders,
-      currentReader: elements.readerName.value.trim(),
-    });
-
-    // Update dashboard
+    await chrome.storage.local.set({ shiftOrders, currentReader: reader });
     updateDashboard();
 
-    // Reset form (keep reader name)
-    elements.customerName.value = "";
-    elements.serviceGroup.value = "";
-    elements.packageSelect.innerHTML =
-      '<option value="">-- Chọn gói --</option>';
-    elements.showCards.checked = false;
-    elements.noteInput.value = "";
+    // Reset form (keep page, reader)
+    els.customerName.value = "";
+    els.serviceGroup.value = "";
+    els.packageSelect.innerHTML = '<option value="">-- Chọn gói --</option>';
+    els.showCards.checked = false;
+    els.noteInput.value = "";
     currentPrice = 0;
-    elements.priceDisplay.textContent = "0k";
+    els.priceDisplay.textContent = "0k";
+    els.priceDisplay.classList.remove("has-price");
 
-    showToast("✓ Đã copy & lưu đơn!", "success");
-
-    // Focus back to customer name for quick entry
-    elements.customerName.focus();
-  } catch (error) {
-    console.error("Error:", error);
+    showToast("✓ Đã copy & lưu đơn!");
+    els.customerName.focus();
+  } catch {
     showToast("Có lỗi xảy ra!", "error");
   }
 }
 
-// ===== RESET SHIFT =====
+// ===== RESET SHIFT (inline confirm) =====
 async function resetShift() {
   if (shiftOrders.length === 0) {
     showToast("Chưa có đơn nào!", "warning");
     return;
   }
 
-  const confirmed = confirm(
-    `Xác nhận reset ca?\nTổng: ${shiftOrders.length} đơn - ${shiftOrders.reduce((sum, o) => sum + o.price, 0)}k`,
-  );
-
-  if (confirmed) {
-    shiftOrders = [];
-    await chrome.storage.local.set({ shiftOrders: [] });
-    updateDashboard();
-    showToast("Đã reset ca!", "success");
+  if (!resetPending) {
+    resetPending = true;
+    const total = shiftOrders.reduce((s, o) => s + o.price, 0);
+    showToast(
+      `Bấm lại để reset ${shiftOrders.length} đơn — ${total}k`,
+      "warning",
+    );
+    setTimeout(() => {
+      resetPending = false;
+    }, 3000);
+    return;
   }
+
+  resetPending = false;
+  shiftOrders = [];
+  await chrome.storage.local.set({ shiftOrders: [] });
+  updateDashboard();
+  showToast("Đã reset ca!");
 }
 
 // ===== COPY REPORT =====
@@ -339,24 +247,22 @@ async function copyReport() {
     return;
   }
 
-  const totalRevenue = shiftOrders.reduce((sum, order) => sum + order.price, 0);
+  const totalRevenue = shiftOrders.reduce((s, o) => s + o.price, 0);
   const salary = Math.floor(totalRevenue * 0.05);
+  const reader = els.readerName.value.trim();
 
-  let report = `📊 BÁO CÁO CA - ${new Date().toLocaleDateString("vi-VN")}\n`;
-  report += `Reader: ${elements.readerName.value.trim()}\n`;
+  let report = `📊 BÁO CÁO CA — ${new Date().toLocaleDateString("vi-VN")}\n`;
+  if (reader) report += `Reader: ${reader}\n`;
   report += `═══════════════════════\n\n`;
 
-  shiftOrders.forEach((order, index) => {
-    const serviceAbbr = getAbbreviation(order.serviceGroup);
-    const packageAbbr = getAbbreviation(order.package);
-    report += `${index + 1}. [${order.pageName}] ${serviceAbbr} ${packageAbbr} - ${order.price}k\n`;
+  shiftOrders.forEach((order, i) => {
+    const sAbbr = getAbbreviation(order.serviceGroup);
+    const pAbbr = getAbbreviation(order.package);
+    const abbr = [sAbbr, pAbbr].filter(Boolean).join(" ");
+    report += `${i + 1}. [${order.pageName}] ${abbr} — ${order.price}k\n`;
     report += `   KH: ${order.customer}\n`;
-    if (order.showCards) {
-      report += `   (Có Show bài)\n`;
-    }
-    if (order.note) {
-      report += `   Note: ${order.note}\n`;
-    }
+    if (order.showCards) report += `   (Có Show bài)\n`;
+    if (order.note) report += `   Note: ${order.note}\n`;
     report += "\n";
   });
 
@@ -368,80 +274,80 @@ async function copyReport() {
 
   try {
     await navigator.clipboard.writeText(report);
-    showToast("✓ Đã copy báo cáo!", "success");
-  } catch (error) {
-    console.error("Error:", error);
+    showToast("✓ Đã copy báo cáo!");
+  } catch {
     showToast("Có lỗi xảy ra!", "error");
   }
 }
 
-// ===== LOAD SAVED DATA =====
-async function loadSavedData() {
-  try {
-    const data = await chrome.storage.local.get([
-      "currentReader",
-      "shiftOrders",
-    ]);
-
-    if (data.currentReader) {
-      elements.readerName.value = data.currentReader;
-    }
-
-    if (data.shiftOrders && Array.isArray(data.shiftOrders)) {
-      shiftOrders = data.shiftOrders;
-      updateDashboard();
-    }
-  } catch (error) {
-    console.error("Error loading data:", error);
-  }
+// ===== LOAD DATA =====
+async function loadPricingData() {
+  const url = chrome.runtime.getURL("price.json");
+  const res = await fetch(url);
+  const data = await res.json();
+  // Strip _comment key
+  const { _comment, ...pricing } = data;
+  return pricing;
 }
 
-// ===== SAVE READER NAME ON CHANGE =====
-async function saveReaderName() {
-  const readerName = elements.readerName.value.trim();
-  if (readerName) {
-    await chrome.storage.local.set({ currentReader: readerName });
+async function loadSavedState() {
+  const data = await chrome.storage.local.get([
+    "currentReader",
+    "currentPage",
+    "shiftOrders",
+  ]);
+  if (data.currentReader) els.readerName.value = data.currentReader;
+  if (
+    data.currentPage &&
+    els.pageSelect.querySelector(`option[value="${data.currentPage}"]`)
+  ) {
+    els.pageSelect.value = data.currentPage;
+  }
+  if (Array.isArray(data.shiftOrders)) {
+    shiftOrders = data.shiftOrders;
+    updateDashboard();
   }
 }
 
 // ===== EVENT LISTENERS =====
 function initEventListeners() {
-  // Dropdown changes
-  elements.pageSelect.addEventListener("change", populateServiceGroups);
-  elements.serviceGroup.addEventListener("change", populatePackages);
-  elements.packageSelect.addEventListener("change", updatePrice);
-
-  // Save reader name on blur
-  elements.readerName.addEventListener("blur", saveReaderName);
-
-  // Action buttons
-  elements.copyAndSaveBtn.addEventListener("click", copyAndSave);
-  elements.resetShiftBtn.addEventListener("click", resetShift);
-  elements.copyReportBtn.addEventListener("click", copyReport);
-
-  // Enter key handling for quick workflow
-  elements.customerName.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      elements.serviceGroup.focus();
-    }
+  els.pageSelect.addEventListener("change", populateServiceGroups);
+  els.serviceGroup.addEventListener("change", populatePackages);
+  els.packageSelect.addEventListener("change", updatePrice);
+  els.readerName.addEventListener("blur", () => {
+    const v = els.readerName.value.trim();
+    if (v) chrome.storage.local.set({ currentReader: v });
   });
 
-  elements.noteInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      copyAndSave();
-    }
+  els.copyAndSaveBtn.addEventListener("click", copyAndSave);
+  els.resetShiftBtn.addEventListener("click", resetShift);
+  els.copyReportBtn.addEventListener("click", copyReport);
+
+  // Keyboard flow: Enter advances to next field
+  els.readerName.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") els.customerName.focus();
+  });
+  els.customerName.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") els.serviceGroup.focus();
+  });
+  els.noteInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") copyAndSave();
   });
 }
 
-// ===== INITIALIZATION =====
+// ===== INIT =====
 async function init() {
-  await loadSavedData();
+  try {
+    PRICING_DATA = await loadPricingData();
+  } catch {
+    showToast("Lỗi load dữ liệu giá!", "error");
+    return;
+  }
+
+  await loadSavedState();
   populateServiceGroups();
   initEventListeners();
-
-  // Focus on customer name for quick entry
-  elements.customerName.focus();
+  els.customerName.focus();
 }
 
-// Run initialization
 init();

@@ -5,7 +5,8 @@
   "use strict";
   const T = window.TQS;
 
-  // ===== MESSAGE GENERATION =====
+  // HTML escape for user-input data
+  const escHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   function generateMessage() {
     const page = T.detectedPage;
     const pageName = T.PRICING_DATA[page]?.name || page;
@@ -98,10 +99,13 @@
       packageDisplay: T.els.customMode.checked
         ? T.els.customName.value.trim()
         : (() => {
-            const before = generateMessage().split(/\s-\s/)[0];
-            return before.includes("]")
-              ? before.split("] ")[1] || before
-              : before;
+            const svc = T.els.serviceSelect.value;
+            const pk = T.els.packageSelect.value;
+            const sA = T.SERVICE_ABBR[svc] ?? svc;
+            const pA = T.PACKAGE_ABBR[pk] ?? pk;
+            if (T.detectedPage === "CA" && svc === "Câu Lẻ") return pA;
+            if (svc.startsWith("⏱")) return [sA, pA].filter(Boolean).join(" ");
+            return [pA, sA].filter(Boolean).join(" ");
           })(),
       price: T.currentPrice,
       note: T.els.noteInput.value.trim(),
@@ -191,9 +195,9 @@
       div.dataset.id = o.id;
       div.innerHTML = `
         <span class="tqs-order-num">${idx + 1}</span>
-        <span class="tqs-order-pkg">${o.packageDisplay}</span>
+        <span class="tqs-order-pkg">${escHTML(o.packageDisplay)}</span>
         <span class="tqs-order-price">${o.price}k</span>
-        <span class="tqs-order-detail">${o.customer} @${o.reader}</span>
+        <span class="tqs-order-detail">${escHTML(o.customer)} @${escHTML(o.reader)}</span>
         <span class="tqs-order-time">${fmtTime(o.timestamp)}</span>
         <button class="tqs-order-btn tqs-edit-btn" data-id="${o.id}">✏️</button>
         <button class="tqs-order-btn tqs-delete-btn" data-id="${o.id}">✕</button>`;

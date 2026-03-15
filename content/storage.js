@@ -30,7 +30,8 @@
         }
       }
     } catch {
-      T.ui.showToast("⚠️ Thiếu config.json!", "error");
+      // T.ui may not be loaded yet — safe fallback
+      if (T.ui?.showToast) T.ui.showToast("⚠️ Thiếu config.json!", "error");
     }
   }
 

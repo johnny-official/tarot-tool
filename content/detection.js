@@ -11,9 +11,11 @@
     const url = window.location.href;
     const params = new URLSearchParams(window.location.search);
     const pageId =
-      params.get("page_id") ||
       params.get("asset_id") ||
+      params.get("page_id") ||
+      params.get("mailbox_id") ||
       params.get("business_id") ||
+      params.get("selected_asset_id") ||
       new URLSearchParams(window.location.hash.slice(1)).get("asset_id");
     if (pageId && T.PAGE_IDS[pageId]) return T.PAGE_IDS[pageId];
     for (const [id, page] of Object.entries(T.PAGE_IDS)) {
@@ -22,42 +24,49 @@
     return null;
   }
 
-  // Detect if current conversation is Instagram or Facebook
+  // Detect if current conversation is Instagram or Facebook.
+  // CONSERVATIVE: defaults to "facebook" unless strong Instagram signals found.
+  // Only checks conversation-specific areas, NOT global sidebar/nav.
   function detectSourcePlatform() {
     try {
+      // 1. URL-level signals (strongest)
       const url = window.location.href;
       if (
-        url.includes("instagram") ||
+        url.includes("channel=instagram") ||
         url.includes("ig_thread") ||
-        url.includes("channel=instagram")
+        url.includes("instagram_id")
       ) {
         return "instagram";
       }
-      const conversationHeader = document.querySelector(
-        '[data-testid="inbox-thread-header"], [class*="thread-header"], [class*="conversation-header"]',
+
+      // 2. Find the conversation thread container
+      // FB Business Suite wraps the active conversation in a specific area
+      const threadContainer =
+        document.querySelector('[data-testid="inbox-thread-header"]')?.closest('[role="main"]') ||
+        document.querySelector('[role="main"]');
+      if (!threadContainer) return "facebook";
+
+      // 3. Check for Instagram-specific data attributes within thread
+      const igData = threadContainer.querySelector(
+        '[data-channel="instagram"], [data-testid*="instagram"]'
       );
-      if (conversationHeader) {
-        if (/instagram/i.test(conversationHeader.textContent || ""))
-          return "instagram";
-      }
-      const igIndicators = document.querySelectorAll(
-        '[aria-label*="Instagram"], [data-channel="instagram"], img[alt*="Instagram"], [title*="Instagram"]',
+      if (igData) return "instagram";
+
+      // 4. Look for Instagram icon/badge NEAR the conversation header
+      // (within first 200px of thread — the header area, not entire page)
+      const headerArea = threadContainer.querySelector(
+        '[data-testid="inbox-thread-header"], [class*="thread-header"]'
       );
-      for (const el of igIndicators) {
-        if (!el.closest("#tarot-quicksale-panel")) return "instagram";
-      }
-      const channelBadges = document.querySelectorAll(
-        '[class*="channel"], [class*="platform"], [class*="source"]',
-      );
-      for (const badge of channelBadges) {
-        if (badge.closest("#tarot-quicksale-panel")) continue;
-        if (
-          /instagram/i.test(
-            badge.textContent || badge.getAttribute("aria-label") || "",
-          )
-        ) {
-          return "instagram";
-        }
+      if (headerArea) {
+        // Check for IG icon SVG or small badges next to customer name
+        const igBadge = headerArea.querySelector(
+          'img[alt*="Instagram"], [aria-label*="Instagram"], svg[aria-label*="Instagram"]'
+        );
+        if (igBadge) return "instagram";
+
+        // Check header text for "Instagram" label
+        const headerText = headerArea.textContent || "";
+        if (/\binstagram\b/i.test(headerText)) return "instagram";
       }
     } catch {
       /* silent */

@@ -1,0 +1,14 @@
+{
+  "_comment": "=== CẤU HÌNH TAROT QUICKSALE === Sửa file này để thêm/bớt fanpage. Reload extension để áp dụng.",
+
+  "pages": {
+    "POBO": { "fbPageId": "918768421315641", "name": "PỜ BƠ" },
+    "DUA":  { "fbPageId": "513140915211900", "name": "DỪA"   },
+    "CA":   { "fbPageId": "105889999207829", "name": "CÁ"    }
+  },
+
+  "settings": {
+    "salaryPercent": 5,
+    "shiftHistoryMax": 30
+  }
+}

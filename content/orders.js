@@ -33,12 +33,12 @@
     }
 
     let msg;
+    const srcEmoji = T.SOURCE_EMOJI[T.sourcePlatform] || "🔵";
     if (page === "POBO") {
-      const srcEmoji = T.SOURCE_EMOJI[T.sourcePlatform] || "🔵";
       msg = `${packageDisplay} - ${T.currentPrice}k ${srcEmoji}${customer} @${reader}`;
     } else {
       const pageIcon = T.PRICING_DATA[page]?.icon || "🔮";
-      msg = `${pageIcon}[${pageName}] ${packageDisplay} - ${T.currentPrice}k 👤${customer} @${reader}`;
+      msg = `${pageIcon}[${pageName}] ${packageDisplay} - ${T.currentPrice}k ${srcEmoji}${customer} @${reader}`;
     }
     if (note) msg += ` ${note}`;
     return msg;
@@ -378,30 +378,46 @@
     T.ui.showToast("✓ Đã lưu và reset!");
   }
 
+  // Service emoji map for dropdown clarity
+  const SERVICE_ICON = {
+    "Tarot": "🃏", "Trải Tarot": "🃏",
+    "Lenormand": "🂠", "Bài Tây": "♠️",
+    "Câu Lẻ": "🔮",
+    "Combo 3 Câu": "✨", "Combo 4 Câu": "✨", "Combo Full 6 Câu": "✨",
+  };
+
   // ===== DROPDOWN LOGIC =====
   function populateServices() {
     const page = T.detectedPage;
     if (!page || !T.PRICING_DATA[page]) return;
 
+    const services = Object.keys(T.PRICING_DATA[page].services);
     const frag = document.createDocumentFragment();
     const defaultOpt = document.createElement("option");
     defaultOpt.value = "";
-    defaultOpt.textContent = "-- Dịch vụ --";
+    defaultOpt.textContent = "-- Chọn loại bài --";
     frag.appendChild(defaultOpt);
 
-    Object.keys(T.PRICING_DATA[page].services).forEach((s) => {
+    services.forEach((s) => {
       const opt = document.createElement("option");
       opt.value = s;
-      opt.textContent = s;
+      const icon = SERVICE_ICON[s] || (s.startsWith("⏱") ? "" : "🔮");
+      opt.textContent = icon ? `${icon} ${s}` : s;
       frag.appendChild(opt);
     });
 
     T.els.serviceSelect.innerHTML = "";
     T.els.serviceSelect.appendChild(frag);
-    T.els.packageSelect.innerHTML = '<option value="">-- Gói --</option>';
+    T.els.packageSelect.innerHTML = '<option value="">-- Chọn gói --</option>';
     T.currentPrice = 0;
     T.els.priceDisplay.textContent = "0k";
     T.els.priceDisplay.classList.remove("tqs-price-active");
+
+    // Auto-select first service if only one (e.g., CÁ Câu Lẻ)
+    if (services.length === 1) {
+      T.els.serviceSelect.value = services[0];
+      populatePackages();
+    }
   }
 
   function populatePackages() {
@@ -409,7 +425,7 @@
     if (!page || !T.PRICING_DATA[page]) return;
     const service = T.els.serviceSelect.value;
 
-    T.els.packageSelect.innerHTML = '<option value="">-- Gói --</option>';
+    T.els.packageSelect.innerHTML = '<option value="">-- Chọn gói --</option>';
     T.currentPrice = 0;
     T.els.priceDisplay.textContent = "0k";
     T.els.priceDisplay.classList.remove("tqs-price-active");
@@ -428,6 +444,12 @@
       frag.appendChild(opt);
     });
     T.els.packageSelect.appendChild(frag);
+
+    // Auto-select + update price if only one package
+    if (Object.keys(packages).length === 1) {
+      T.els.packageSelect.selectedIndex = 1;
+      updatePrice();
+    }
   }
 
   function updatePrice() {

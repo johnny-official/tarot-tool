@@ -7,10 +7,6 @@
     "CA":   { "fbPageId": "YOUR_CA_PAGE_ID",   "name": "CÁ"    }
   },
 
-  "messenger": {
-    "facebookChatId":  "YOUR_FACEBOOK_GROUP_CHAT_ID",
-    "messengerChatId": "YOUR_MESSENGER_GROUP_CHAT_ID"
-  },
 
   "settings": {
     "salaryPercent": 5,

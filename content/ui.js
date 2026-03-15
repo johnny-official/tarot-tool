@@ -7,11 +7,8 @@
 
   // ===== PANEL HTML =====
   function createPanelHTML() {
-    const detected = T.detection.detectPageFromURL();
-    T.detectedPage = detected;
-    const pageColor = detected
-      ? T.PRICING_DATA[detected]?.color || "cyan"
-      : "cyan";
+    // NOTE: T.PRICING_DATA is NOT loaded yet when this runs.
+    // Badge gets updated later by main.js after loadConfig + loadPricingData.
 
     return `
       <div class="tqs-header" id="tqs-drag-handle">
@@ -19,7 +16,7 @@
           <span class="tqs-logo-icon">🔮</span> QuickSale
         </div>
         <div class="tqs-header-actions">
-          <span class="tqs-page-badge tqs-badge-${pageColor}" id="tqs-page-badge">${T.PRICING_DATA[detected]?.name || detected || '...'}</span>
+          <span class="tqs-page-badge tqs-badge-cyan" id="tqs-page-badge">...</span>
           <span class="tqs-stats-inline" title="Đơn / Tiền"><span id="tqs-total-orders">0</span>đ · <span id="tqs-total-revenue">0k</span></span>
           <button class="tqs-header-btn" id="tqs-report" title="📋 Báo Cáo">📋</button>
           <button class="tqs-header-btn" id="tqs-reset" title="🔄 Reset">🔄</button>

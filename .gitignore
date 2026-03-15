@@ -1,11 +1,7 @@
 # === Tarot QuickSale — .gitignore ===
 
 # Cấu hình riêng (chứa Page ID, Chat ID bí mật)
-config.json
-
-# Desktop.ini (Windows)
-desktop.ini
-Thumbs.db
+# config.json
 
 # Editor
 .vscode/

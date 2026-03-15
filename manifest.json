@@ -1,29 +1,27 @@
 {
   "manifest_version": 3,
   "name": "Tarot QuickSale",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Công cụ hỗ trợ nhân viên Sale Tarot chốt đơn nhanh - Cá, Dừa, Pờ Bơ",
-  "permissions": ["storage", "tabs", "scripting", "activeTab"],
+  "permissions": ["storage", "activeTab"],
   "host_permissions": [
-    "https://business.facebook.com/*",
-    "https://www.facebook.com/*",
-    "https://www.messenger.com/*"
+    "https://business.facebook.com/*"
   ],
   "content_scripts": [
     {
       "matches": ["https://business.facebook.com/*"],
-      "js": ["content.js"],
+      "js": [
+        "content/state.js",
+        "content/constants.js",
+        "content/detection.js",
+        "content/storage.js",
+        "content/readers.js",
+        "content/orders.js",
+        "content/ui.js",
+        "content/main.js"
+      ],
       "css": ["content.css"],
       "run_at": "document_end"
-    },
-    {
-      "matches": [
-        "https://www.messenger.com/*",
-        "https://www.facebook.com/messages/*"
-      ],
-      "js": ["messenger.js"],
-      "run_at": "document_end",
-      "all_frames": true
     }
   ],
   "action": {
@@ -34,12 +32,8 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["messenger.js", "price.json", "config.json"],
-      "matches": [
-        "https://www.facebook.com/*",
-        "https://www.messenger.com/*",
-        "https://business.facebook.com/*"
-      ]
+      "resources": ["price.json", "config.json"],
+      "matches": ["https://business.facebook.com/*"]
     }
   ]
 }

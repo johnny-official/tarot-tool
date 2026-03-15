@@ -1,204 +1,202 @@
-# 🔮 Tarot QuickSale — Chrome Extension
+# 🔮 Tarot QuickSale — Công cụ chốt đơn nhanh
 
-> **Công cụ hỗ trợ nhân viên Sale Tarot chốt đơn nhanh trên Facebook Business Suite.**
-
-[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](#cài-đặt)
-[![Manifest V3](https://img.shields.io/badge/Manifest-V3-green)](#)
-[![License](https://img.shields.io/badge/License-Private-red)](#)
+> Extension Chrome giúp nhân viên sale Tarot **copy tin nhắn chuẩn format** chỉ trong 1 click trên Facebook Business Suite.
 
 ---
 
-## 📋 Mục Lục
+## ✨ Tính năng
 
-- [Tính Năng](#-tính-năng)
-- [Cấu Trúc Dự Án](#-cấu-trúc-dự-án)
-- [Cài Đặt](#-cài-đặt)
-- [Cấu Hình](#-cấu-hình)
-- [Cập Nhật Bảng Giá](#-cập-nhật-bảng-giá)
-- [Hướng Dẫn Sử Dụng](#-hướng-dẫn-sử-dụng)
-- [Phát Triển](#-phát-triển)
-
----
-
-## ✨ Tính Năng
-
-| Tính năng | Mô tả |
-|-----------|-------|
-| 🎯 **Chốt đơn 1-click** | Copy tin nhắn format chuẩn hoặc gửi trực tiếp qua Messenger |
-| 👥 **Quản lý Reader** | Thêm/xóa reader, tự động xoay vòng sau mỗi đơn |
-| 📅 **Lịch tự động** | Paste lịch ca → auto nhận diện reader theo khung giờ |
-| 📊 **Dashboard realtime** | Thống kê đơn, doanh thu, báo cáo ca chi tiết |
-| 🔄 **Đồng bộ đa tab** | Mở nhiều page cùng lúc, data sync tức thì |
-| 📱 **Nhận diện Page** | Tự detect Cá/Dừa/Pờ Bơ từ URL, hiển thị badge màu tương ứng |
-| 📋 **Xuất báo cáo** | Copy hoặc download báo cáo ca dạng text |
-| ⌨️ **Phím tắt** | `Alt+T` toggle panel, `Enter` chuyển field nhanh |
+- 🎯 **Chốt đơn siêu nhanh** — Chọn dịch vụ → chọn gói → bấm Copy → xong
+- 🔍 **Tự nhận diện fanpage** — Tự biết đang ở Bơ, Dừa hay Cá từ URL
+- 🔵🟣 **Phân biệt FB / Instagram** — Tự detect khách từ Facebook (🔵) hay Instagram (🟣)
+- 👤 **Tự điền tên khách** — Lấy tên từ cuộc hội thoại, không cần gõ tay
+- 🔄 **Tự xoay Reader** — Mỗi đơn tự chuyển sang reader kế tiếp
+- 📅 **Lịch ca tự động** — Paste lịch ca → tự gán reader theo giờ
+- 📊 **Dashboard + Báo cáo** — Đếm đơn, tính tiền, xuất báo cáo ca
 
 ---
 
-## 📁 Cấu Trúc Dự Án
+## 📦 Cài đặt (từng bước)
 
-```
-tarot_tool/
-├── manifest.json          # Cấu hình Chrome Extension (Manifest V3)
-├── config.json            # 🔒 Biến riêng (Page ID, Chat ID) — KHÔNG COMMIT
-├── config.example.json    # 📄 Template config — để người khác tham khảo
-├── price.json             # 💰 Bảng giá — Single Source of Truth
-├── background.js          # Service Worker (xử lý gửi tin nhắn, tab mgmt)
-├── content.js             # Content Script (inject panel vào Facebook)
-├── content.css            # CSS cho panel trên Facebook
-├── messenger.js           # Helper script cho Messenger (type & send)
-├── popup.html             # Popup UI (click icon extension)
-├── popup.js               # Logic popup
-├── style.css              # CSS cho popup
-├── AGENTS.md              # 🤖 Context cho AI assistant
-├── .gitignore             # Git ignore rules
-└── README.md              # 📖 File này
-```
-
----
-
-## 🚀 Cài Đặt
-
-### Bước 1: Clone repo
-
+### Bước 1: Tải code về
 ```bash
-git clone https://github.com/johnny-official/tarot-tool.git
-cd tarot-tool
+git clone https://github.com/YourUsername/tarot-tool.git
 ```
+Hoặc bấm nút **Code → Download ZIP** trên GitHub, rồi giải nén.
 
-### Bước 2: Tạo file cấu hình
+### Bước 2: Cài vào Chrome
 
-```bash
-# Copy template
-cp config.example.json config.json
+1. Mở Chrome → gõ `chrome://extensions` vào thanh địa chỉ → Enter
+2. Bật **Developer mode** (Chế độ nhà phát triển) ở góc trên bên phải
+3. Bấm **Load unpacked** (Tải tiện ích đã giải nén)
+4. Chọn thư mục `tarot-tool` vừa tải về
+5. Extension sẽ xuất hiện với icon 🔮
 
-# Mở và điền thông tin thật
-# - Facebook Page IDs
-# - Messenger Chat IDs
-```
+### Bước 3: Mở Facebook Business Suite
 
-### Bước 3: Load vào Chrome
+1. Vào [business.facebook.com](https://business.facebook.com)
+2. Chọn **Hộp thư** (Inbox) của fanpage
+3. Panel 🔮 QuickSale sẽ tự hiện ở góc phải
 
-1. Mở `chrome://extensions/`
-2. Bật **Developer mode** (góc phải trên)
-3. Click **Load unpacked** → chọn thư mục `tarot_tool/`
-4. Pin extension lên toolbar
-
-### Bước 4: Sử dụng
-
-1. Mở **Facebook Business Suite** (`business.facebook.com`)
-2. Panel sẽ tự xuất hiện ở góc phải
-3. Hoặc nhấn `Alt+T` để toggle
+> **Mẹo:** Bấm `Alt + T` để ẩn/hiện panel nhanh.
 
 ---
 
-## ⚙️ Cấu Hình
+## 🚀 Hướng dẫn sử dụng
 
-### `config.json` — Biến bí mật (KHÔNG commit)
+### Chốt đơn (Copy tin nhắn)
 
-| Field | Mô tả | Ví dụ |
-|-------|--------|-------|
-| `pages.*.fbPageId` | Facebook Page ID | `"918768421315641"` |
-| `messenger.facebookChatId` | Group chat ID trên facebook.com | `"623973524119607"` |
-| `messenger.messengerChatId` | Group chat ID trên messenger.com | `"8164573853616965"` |
-| `settings.salaryPercent` | % lương tính trên doanh thu | `5` |
-| `settings.shiftHistoryMax` | Số ca lưu tối đa | `30` |
+1. Mở cuộc hội thoại với khách trên FB Business Suite
+2. Panel sẽ tự **nhận diện fanpage** và **điền tên khách**
+3. Chọn **loại bài** → chọn **gói** → giá tự hiện
+4. Bấm **📋 Copy & Lưu**
+5. Paste vào group chat!
 
-> **Lấy Page ID:** Facebook Business Suite → Settings → Page → Page ID
->
-> **Lấy Chat ID:** Mở nhóm chat trên Messenger → URL sẽ có dạng `messenger.com/t/CHAT_ID`
+### Output mẫu
+
+**Page Bơ (Pờ Bơ):**
+```
+1CS TA - 20k 🔵Phương Thảo @Dương Thư Trâm
+7CS LENOR - 145k 🟣Tuyet Nhii @Nguyễn Nguyên
+```
+
+**Page Cá:**
+```
+🐟[CÁ] CS TA - 20k 🔵Khách Hàng @Vănn Tài
+```
+
+**Page Dừa:**
+```
+🥥[DỪA] 3CS TA - 55k 🟣Khách IG @Ngọc Phan
+```
+
+- 🔵 = Khách từ **Facebook**
+- 🟣 = Khách từ **Instagram**
 
 ---
 
-## 💰 Cập Nhật Bảng Giá
+### Quản lý Reader
 
-Chỉ cần sửa file `price.json` — **không cần đụng code!**
+**Thêm reader:** Gõ tên vào ô `Gõ tên → Enter` và nhấn Enter.
 
-```jsonc
+**Chọn reader tay:** Bấm vào chip tên reader. Đơn tiếp theo sẽ tự quay lại xoay vòng.
+
+**Tự xoay:** Bật toggle 🔄 → mỗi đơn copy xong tự chuyển sang reader kế tiếp.
+
+---
+
+### 📅 Paste Lịch Ca
+
+Bấm nút **📅** → paste lịch ca vào → bấm **Cập nhật**.
+
+**Ví dụ lịch ca từ thông báo của quản lý:**
+
+```
+🎀🎀 CA LÀM VIỆC 🎀🎀
+✨Ca Sáng: 9h - 11h : @Vănn Tài
+✨Ca Sáng: 11h - 13h : @Ngọc Phan
+✨Ca Chiều: 13h - 15h : @Tùng Yến
+✨Ca Chiều: 15h - 17h : @Hương Ly
+✨Ca Tối: 17h - 19h :  @Dương Thư Trâm
+✨Ca Tối: 19h - 21h : @Dương Thư Trâm  @NP Quin's Cky
+✨Ca Đêm: 21h - 23h : @An Du Trân @NP Quin's Cky
+✨Ca Đêm : 23h - 2h : @Hà Vi
+```
+
+**Chỉ cần copy paste nguyên lịch** → extension tự parse ra:
+- Ca nào, giờ nào, reader nào
+- Nhiều reader 1 ca cũng được (tự xoay trong ca)
+- Ca đêm qua ngày (23h - 2h) cũng hiểu
+
+> **Lưu ý:** Tên reader phải có `@` ở trước. VD: `@Hà Vi`, `@Ngọc Phan`
+
+---
+
+### 📊 Báo cáo ca
+
+- Bấm **📋** ở header → copy báo cáo ca chi tiết (đơn, tiền, reader)
+- Bấm **🔄** ở header → reset ca mới (lịch sử tự lưu)
+
+---
+
+## ⚙️ Cấu hình
+
+### Thay đổi giá dịch vụ
+
+Sửa file `price.json` → reload extension.
+
+```json
 {
-  "CA": {
-    "name": "CÁ",
-    "color": "cyan",
+  "POBO": {
+    "name": "PỜ BƠ",
+    "icon": "🧈",
     "services": {
-      "Trải Tarot": {
-        "Y/N": 39,
-        "CS Tarot": 79
-        // Thêm gói mới ở đây
+      "Tarot": {
+        "1 Y/N": 9,
+        "1 CS": 20,
+        "3 CS": 55,
+        "5 CS": 85,
+        "7 CS": 115
       }
     }
   }
 }
 ```
 
-Sau khi sửa → vào `chrome://extensions/` → bấm 🔄 Reload.
+### Thêm/sửa fanpage
+
+Sửa file `config.json`:
+
+```json
+{
+  "pages": {
+    "POBO": { "fbPageId": "918768421315641", "name": "PỜ BƠ" },
+    "DUA":  { "fbPageId": "513140915211900", "name": "DỪA" },
+    "CA":   { "fbPageId": "105889999207829", "name": "CÁ" }
+  }
+}
+```
+
+**Cách tìm Page ID:** Mở fanpage trên FB Business Suite → nhìn URL → copy số sau `asset_id=`.
 
 ---
 
-## 📖 Hướng Dẫn Sử Dụng
+## 🔧 Cập nhật Extension
 
-### Quy trình chốt đơn
+Sau khi sửa code hoặc file JSON:
 
-```
-1. Mở Business Suite + chọn page
-2. Nhập tên khách → chọn dịch vụ → chọn gói
-3. Bấm "📋 Copy & Lưu" hoặc "📤 Gửi Msg"
-4. Done! Reader tự xoay, đơn tự lưu
-```
-
-### Reader
-
-| Hành động | Cách làm |
-|-----------|----------|
-| Thêm reader | Gõ tên vào ô → Enter |
-| Chọn reader cho 1 đơn | Click chip reader |
-| Xoay tự động | Bật toggle 🔄 |
-| Import từ lịch | Bấm 📅 → paste lịch → Cập nhật |
-
-### Phím tắt
-
-| Phím | Hành động |
-|------|-----------|
-| `Alt + T` | Toggle panel |
-| `Enter` (ở tên khách) | Nhảy sang chọn dịch vụ |
-| `Enter` (ở ghi chú) | Copy & Lưu |
+1. Mở `chrome://extensions`
+2. Tìm **Tarot QuickSale**
+3. Bấm nút 🔄 (Reload)
+4. Refresh lại trang Facebook Business Suite
 
 ---
 
-## 🛠 Phát Triển
+## ❓ Câu hỏi thường gặp
 
-### Yêu cầu
+**Q: Panel không hiện?**
+→ Kiểm tra đang ở `business.facebook.com`. Bấm `Alt+T` hoặc click icon 🔮 trên toolbar.
 
-- Chrome 116+ (Manifest V3)
-- Không cần Node.js, không cần build
+**Q: Giá không đúng?**
+→ Sửa `price.json` → reload extension trên `chrome://extensions`.
 
-### Debug
+**Q: Không nhận diện được fanpage?**
+→ Kiểm tra `config.json` có đúng Page ID. Nhìn URL có `asset_id=...` khớp với ID trong config.
 
-1. `chrome://extensions/` → Tarot QuickSale → **Inspect views: service worker**
-2. F12 trên trang Facebook → Console
+**Q: Copy ra icon 🟣 (tím) thay vì 🔵 (xanh)?**
+→ Extension detect từ vùng chat. Nếu sai, check lại cuộc hội thoại có phải từ Instagram không.
 
-### Đóng góp
+---
 
-1. Fork repo
-2. Tạo branch: `git checkout -b feature/ten-tinh-nang`
-3. Commit: `git commit -m "feat: mô tả ngắn"`
-4. Push + tạo Pull Request
+## 📱 Liên hệ & Hỗ trợ
 
-### Roadmap
+Mọi thắc mắc, góp ý, hoặc báo lỗi:
 
-- [ ] 🌐 Hỗ trợ nhiều ngôn ngữ (i18n)
-- [ ] 📈 Biểu đồ doanh thu theo tuần/tháng
-- [ ] 🔔 Thông báo khi đến ca reader
-- [ ] 💾 Export/Import data (backup)
-- [ ] 🎨 Theme tùy chỉnh (light/dark)
+- 💬 **Telegram:** [@johnnyvv](https://t.me/johnnyvv)
+- 📘 **Facebook:** [Johnny Vu](https://facebook.com)
 
 ---
 
 ## 📄 License
 
-**Private** — Sử dụng nội bộ.
-
----
-
-<div align="center">
-  <sub>Made with 🔮 by <a href="https://github.com/johnny-official">johnny-official</a></sub>
-</div>
+MIT — Thoải mái sử dụng và chỉnh sửa.

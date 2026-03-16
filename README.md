@@ -27,15 +27,14 @@ Thay vì gõ tay từng đơn, bạn chỉ cần chọn dịch vụ, chọn gói
 
 ## Tính năng chính
 
-| Tính năng | Mô tả |
-|-----------|-------|
-| Chốt đơn 1 click | Chọn dịch vụ, chọn gói, bấm Copy là xong |
-| Tự nhận diện page | Tự biết đang ở page Bơ, Dừa hay Cá |
+| Tính năng          | Mô tả                                                       |
+| ------------------ | ----------------------------------------------------------- |
+| Chốt đơn 1 click   | Chọn dịch vụ, chọn gói, bấm Copy là xong                    |
+| Tự nhận diện page  | Tự biết đang ở page Bơ, Dừa hay Cá                          |
 | Phân biệt FB và IG | Tự nhận biết khách nhắn từ Facebook (🔵) hay Instagram (🟣) |
-| Tự điền tên khách | Lấy tên từ cuộc hội thoại, không cần gõ |
-| Tự xoay Reader | Copy xong đơn, tự chuyển sang reader kế tiếp |
-| Lịch ca tự động | Paste lịch ca từ group, tự gán reader theo giờ |
-| Báo cáo kết ca | Thống kê đơn, tiền, lương, copy 1 phát là xong |
+| Tự xoay Reader     | Copy xong đơn, tự chuyển sang reader kế tiếp                |
+| Lịch ca tự động    | Paste lịch ca từ group, tự gán reader theo giờ              |
+| Báo cáo kết ca     | Thống kê đơn, tiền, lương, copy 1 phát là xong              |
 
 ---
 
@@ -87,6 +86,7 @@ Không cần cài thêm bất kỳ phần mềm nào khác.
 4. Panel **QuickSale** sẽ tự động hiện ở góc phải màn hình
 
 **Nếu không thấy panel**, thử một trong các cách sau:
+
 - Nhấn tổ hợp phím **Alt + T** trên bàn phím
 - Bấm vào icon Extension trên thanh Chrome
 - Vào `chrome://extensions` kiểm tra extension đã bật chưa
@@ -114,17 +114,20 @@ Mở group chat → dán tin nhắn (Ctrl + V)
 ### Kết quả copy ra trông như thế nào?
 
 **Page Bơ** (không có icon page phía trước):
+
 ```
 1CS TA - 20k 🔵Phương Thảo @Dương Thư Trâm
 7CS LENOR - 145k 🟣Tuyet Nhii @Nguyễn Nguyên
 ```
 
 **Page Cá** (có icon và tên page phía trước):
+
 ```
 🐟[CÁ] CS TA - 20k 🔵Nguyễn Văn A @Vănn Tài
 ```
 
 **Page Dừa** (có icon và tên page phía trước):
+
 ```
 🥥[DỪA] 3CS TA - 55k 🟣Khách Instagram @Ngọc Phan
 ```
@@ -133,15 +136,15 @@ Mở group chat → dán tin nhắn (Ctrl + V)
 
 Lấy ví dụ: `1CS TA - 20k 🔵Phương Thảo @Dương Thư Trâm`
 
-| Phần | Ý nghĩa |
-|------|---------|
-| `1CS` | 1 Câu Soi (viết tắt tự động) |
-| `TA` | Tarot (viết tắt tự động) |
-| `20k` | Giá 20 nghìn đồng |
-| 🔵 | Khách nhắn từ **Facebook** |
-| 🟣 | Khách nhắn từ **Instagram** |
-| `Phương Thảo` | Tên khách hàng |
-| `@Dương Thư Trâm` | Reader đang trực ca |
+| Phần              | Ý nghĩa                      |
+| ----------------- | ---------------------------- |
+| `1CS`             | 1 Câu Soi (viết tắt tự động) |
+| `TA`              | Tarot (viết tắt tự động)     |
+| `20k`             | Giá 20 nghìn đồng            |
+| 🔵                | Khách nhắn từ **Facebook**   |
+| 🟣                | Khách nhắn từ **Instagram**  |
+| `Phương Thảo`     | Tên khách hàng               |
+| `@Dương Thư Trâm` | Reader đang trực ca          |
 
 ---
 
@@ -206,6 +209,7 @@ Bạn chỉ cần **copy toàn bộ đoạn text trên**, paste vào ô lịch, 
 Sau khi cập nhật, reader sẽ **tự động chuyển theo giờ**, bạn không cần làm gì thêm.
 
 **Lưu ý quan trọng:**
+
 - Tên reader phải có dấu `@` ở trước, ví dụ: `@Hà Vi`, `@Ngọc Phan`
 - Giờ viết dạng `9h`, `14h`, hoặc `9:00`, `14:00` đều được
 
@@ -277,13 +281,13 @@ Sau khi bấm nút 📋, tin nhắn copy ra sẽ trông như thế này:
 
 ### Giải thích báo cáo
 
-| Phần | Ý nghĩa |
-|------|---------|
-| Tiêu đề | Ngày làm việc, giờ bắt đầu và kết thúc ca |
-| Theo page | Gom đơn theo từng page (Bơ, Cá, Dừa), kèm số đơn và tổng tiền |
-| Chi tiết đơn | Số thứ tự, gói dịch vụ, giá, tên khách, reader, giờ chốt |
-| Theo Reader | Thống kê mỗi reader bao nhiêu đơn, bao nhiêu tiền |
-| Tổng kết | Tổng số đơn, tổng tiền, lương 5% |
+| Phần         | Ý nghĩa                                                       |
+| ------------ | ------------------------------------------------------------- |
+| Tiêu đề      | Ngày làm việc, giờ bắt đầu và kết thúc ca                     |
+| Theo page    | Gom đơn theo từng page (Bơ, Cá, Dừa), kèm số đơn và tổng tiền |
+| Chi tiết đơn | Số thứ tự, gói dịch vụ, giá, tên khách, reader, giờ chốt      |
+| Theo Reader  | Thống kê mỗi reader bao nhiêu đơn, bao nhiêu tiền             |
+| Tổng kết     | Tổng số đơn, tổng tiền, lương 5%                              |
 
 ### Reset ca mới
 
@@ -339,8 +343,8 @@ Sửa file `config.json` (cũng mở bằng Notepad):
 {
   "pages": {
     "POBO": { "fbPageId": "918768421315641", "name": "PỜ BƠ" },
-    "DUA":  { "fbPageId": "513140915211900", "name": "DỪA" },
-    "CA":   { "fbPageId": "105889999207829", "name": "CÁ" }
+    "DUA": { "fbPageId": "513140915211900", "name": "DỪA" },
+    "CA": { "fbPageId": "105889999207829", "name": "CÁ" }
   }
 }
 ```
@@ -353,9 +357,11 @@ Sửa file `config.json` (cũng mở bằng Notepad):
 4. Dãy số phía sau đó chính là Page ID
 
 Ví dụ, nếu URL trông như thế này:
+
 ```
 https://business.facebook.com/latest/inbox/all?asset_id=918768421315641&...
 ```
+
 Thì Page ID là: `918768421315641`
 
 ---
@@ -403,14 +409,14 @@ Mỗi khi bạn sửa file `price.json`, `config.json`, hoặc bất kỳ file n
 
 ## Phím tắt
 
-| Phím | Chức năng |
-|------|-----------|
-| `Alt + T` | Ẩn hoặc hiện panel |
-| `Alt + C` | Copy & Lưu đơn nhanh |
-| `Alt + 1..9` | Chọn gói nhanh theo số thứ tự |
-| `Enter` (ở ô tên khách) | Nhảy sang chọn dịch vụ |
-| `Enter` (ở ô ghi chú) | Copy và Lưu đơn |
-| `Enter` (ở ô thêm reader) | Thêm reader mới |
+| Phím                      | Chức năng                     |
+| ------------------------- | ----------------------------- |
+| `Alt + T`                 | Ẩn hoặc hiện panel            |
+| `Alt + C`                 | Copy & Lưu đơn nhanh          |
+| `Alt + 1..9`              | Chọn gói nhanh theo số thứ tự |
+| `Enter` (ở ô tên khách)   | Nhảy sang chọn dịch vụ        |
+| `Enter` (ở ô ghi chú)     | Copy và Lưu đơn               |
+| `Enter` (ở ô thêm reader) | Thêm reader mới               |
 
 ---
 
@@ -423,4 +429,4 @@ Mọi thắc mắc, góp ý, hoặc báo lỗi, liên hệ:
 
 ---
 
-*Tarot QuickSale — Chốt đơn nhanh, chính xác, không sai format.*
+_Tarot QuickSale — Chốt đơn nhanh, chính xác, không sai format._

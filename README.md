@@ -406,6 +406,8 @@ Mỗi khi bạn sửa file `price.json`, `config.json`, hoặc bất kỳ file n
 | Phím | Chức năng |
 |------|-----------|
 | `Alt + T` | Ẩn hoặc hiện panel |
+| `Alt + C` | Copy & Lưu đơn nhanh |
+| `Alt + 1..9` | Chọn gói nhanh theo số thứ tự |
 | `Enter` (ở ô tên khách) | Nhảy sang chọn dịch vụ |
 | `Enter` (ở ô ghi chú) | Copy và Lưu đơn |
 | `Enter` (ở ô thêm reader) | Thêm reader mới |

@@ -5,8 +5,10 @@
   "use strict";
   const T = window.TQS;
 
-  // HTML escape for user-input data
   const escHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // Anti-double-click lock
+  let _copying = false;
   function generateMessage() {
     const page = T.detectedPage;
     const pageName = T.PRICING_DATA[page]?.name || page;
@@ -151,17 +153,34 @@
 
   // ===== COPY AND SAVE =====
   async function copyAndSave() {
+    if (_copying) return;
     if (!validateForm()) return;
+    _copying = true;
     T.sourcePlatform = T.detection.detectSourcePlatform();
     const message = generateMessage();
     try {
       await navigator.clipboard.writeText(message);
       await saveOrder();
       T.readers.rotateReader();
+
+      // Visual feedback nút Copy
+      const btn = T.els.copySaveBtn;
+      if (btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "✓ Đã copy!";
+        btn.classList.add("tqs-btn-success");
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.classList.remove("tqs-btn-success");
+        }, 1200);
+      }
+
       T.ui.showToast("✓ Đã copy!");
       resetForm();
     } catch {
       T.ui.showToast("Lỗi!", "error");
+    } finally {
+      _copying = false;
     }
   }
 

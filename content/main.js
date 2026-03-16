@@ -38,12 +38,11 @@
       }
       const chip = e.target.closest(".tqs-chip");
       if (chip?.dataset.reader) {
-        T.manualReaderOverride = chip.dataset.reader;
-        const idx = parseInt(chip.dataset.idx);
-        if (!isNaN(idx)) {
-          T.activeReaderIdx = idx;
-          chrome.storage.local.set({ activeReaderIdx: T.activeReaderIdx });
+        // Lưu vị trí gốc trước khi override (per-group)
+        if (!T.manualReaderOverride) {
+          T.preOverrideReaderIdx = T.readers.getGroupIdx();
         }
+        T.manualReaderOverride = chip.dataset.reader;
         T.readers.updateReaderDisplay();
         T.ui.showToast(`🎯 1 lượt: @${chip.dataset.reader}`);
       }
@@ -81,6 +80,8 @@
         const allReaders = [...new Set(slots.flatMap((s) => s.readers))];
         if (allReaders.length > 0) {
           T.readerList = allReaders;
+          T.groupReaderIdx = { CA_DUA: 0, POBO: 0 };
+          T.groupSlotReaderIdx = { CA_DUA: {}, POBO: {} };
           T.activeReaderIdx = 0;
         }
         if (T.els.scheduleModeToggle) T.els.scheduleModeToggle.checked = true;
@@ -89,6 +90,8 @@
           scheduleSlots: slots,
           scheduleMode: true,
           savedReaders: T.readerList,
+          groupReaderIdx: { ...T.groupReaderIdx },
+          groupSlotReaderIdx: JSON.parse(JSON.stringify(T.groupSlotReaderIdx)),
         });
         T.ui.showToast(`✓ ${slots.length} ca · ${allReaders.join(", ")}`);
         T.els.scheduleModal.classList.add("tqs-hidden");
@@ -130,11 +133,37 @@
   // ===== KEYBOARD SHORTCUTS =====
   function initShortcuts() {
     document.addEventListener("keydown", (e) => {
+      // Bỏ qua nếu đang gõ trong input/textarea khác (ngoài panel)
+      const tag = e.target.tagName;
+      const inPanelInput = e.target.closest("#tarot-quicksale-panel");
+
       if (e.altKey && e.key === "t") {
         e.preventDefault();
         const isHidden = T.panel.classList.contains("tqs-hidden");
         T.panel.classList.toggle("tqs-hidden", !isHidden);
         T.els.toggleBtn.classList.toggle("tqs-hidden", isHidden);
+        return;
+      }
+
+      // Alt+C — Quick Copy & Save
+      if (e.altKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        if (!T.panel.classList.contains("tqs-hidden")) {
+          T.orders.copyAndSave();
+        }
+        return;
+      }
+
+      // Alt+1..9 — Quick chọn gói (khi panel đang mở)
+      if (e.altKey && e.key >= "1" && e.key <= "9" && !T.panel.classList.contains("tqs-hidden")) {
+        e.preventDefault();
+        const idx = parseInt(e.key);
+        const pkgSelect = T.els.packageSelect;
+        if (pkgSelect && pkgSelect.options.length > idx) {
+          pkgSelect.selectedIndex = idx;
+          T.orders.updatePrice();
+        }
+        return;
       }
     });
 
@@ -152,15 +181,31 @@
   // ===== SPA NAVIGATION OBSERVER =====
   function initSPAObserver() {
     let _lastURL = location.href;
+    let _lastItemId = T.detection.getSelectedItemId();
+
     setInterval(() => {
-      if (location.href !== _lastURL) {
-        _lastURL = location.href;
-        const newPage = T.detection.detectPageFromURL();
-        if (newPage && newPage !== T.detectedPage) {
-          T.detectedPage = newPage;
-          T.ui.updatePageBadge();
-          T.orders.populateServices();
+      const currURL = location.href;
+      const currItemId = T.detection.getSelectedItemId();
+      const urlChanged = currURL !== _lastURL;
+      const itemChanged = currItemId !== _lastItemId;
+
+      if (urlChanged || itemChanged) {
+        _lastURL = currURL;
+        _lastItemId = currItemId;
+
+        // Detect page change (page-level)
+        if (urlChanged) {
+          const newPage = T.detection.detectPageFromURL();
+          if (newPage && newPage !== T.detectedPage) {
+            T.detectedPage = newPage;
+            T.ui.updatePageBadge();
+            T.orders.populateServices();
+            // Cập nhật reader display cho group mới
+            T.readers.updateReaderDisplay();
+          }
         }
+
+        // Detect conversation change (item-level)
         T.sourcePlatform = T.detection.detectSourcePlatform();
         T.detection.tryAutoFillCustomer();
       }
@@ -174,19 +219,20 @@
     if (!panel) return;
     T.ui.collectElements(panel);
 
-    // 2. Load config → PAGE_IDS
-    await T.storage.loadConfig();
-    T.detectedPage = T.detection.detectPageFromURL();
-
-    // 3. Load pricing data
+    // 2. Parallel fetch: config + pricing + saved data
     try {
-      T.PRICING_DATA = await T.storage.loadPricingData();
+      const [, pricingData] = await Promise.all([
+        T.storage.loadConfig(),
+        T.storage.loadPricingData(),
+      ]);
+      T.PRICING_DATA = pricingData;
     } catch {
-      T.ui.showToast("Lỗi load dữ liệu giá!", "error");
+      T.ui.showToast("Lỗi load dữ liệu!", "error");
       return;
     }
 
-    // 4. Auto-select page
+    // 3. Detect page
+    T.detectedPage = T.detection.detectPageFromURL();
     if (!T.detectedPage || !T.PRICING_DATA[T.detectedPage]) {
       const firstPage = Object.keys(T.PRICING_DATA)[0];
       if (firstPage) T.detectedPage = firstPage;
@@ -194,17 +240,20 @@
     T.ui.updatePageBadge();
     T.sourcePlatform = T.detection.detectSourcePlatform();
 
-    // 5. Load saved data from storage
+    // 4. Load saved data from storage
     await T.storage.loadData();
     T.orders.populateServices();
 
-    // 6. Init UI systems
+    // 5. Init UI systems
     T.ui.initDrag();
     T.ui.initControls();
     initEvents();
     initShortcuts();
     T.storage.initCrossTabSync();
     initSPAObserver();
+
+    // 6. Conversation observer (MutationObserver on main area)
+    T.detection.initConversationObserver();
 
     // 7. Auto-fill customer + focus
     T.detection.tryAutoFillCustomer();

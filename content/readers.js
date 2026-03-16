@@ -1,9 +1,40 @@
 // ===== TAROT QUICKSALE — READER MANAGEMENT =====
 // Reader CRUD, rotation, schedule parsing, display.
+// CÁ+DỪA đồng bộ rotation, POBO riêng.
 
 (function () {
   "use strict";
   const T = window.TQS;
+
+  // ===== PAGE GROUP HELPER =====
+  function getPageGroup(page) {
+    return T.PAGE_GROUPS[page] || "CA_DUA";
+  }
+
+  function getGroupIdx() {
+    const g = getPageGroup(T.detectedPage);
+    const idx = T.groupReaderIdx[g] || 0;
+    return T.readerList.length > 0 ? idx % T.readerList.length : 0;
+  }
+
+  function setGroupIdx(val) {
+    const g = getPageGroup(T.detectedPage);
+    T.groupReaderIdx[g] = val;
+    // Đồng bộ activeReaderIdx cho backward compat
+    T.activeReaderIdx = val;
+  }
+
+  function getGroupSlotIdx(key) {
+    const g = getPageGroup(T.detectedPage);
+    if (!T.groupSlotReaderIdx[g]) T.groupSlotReaderIdx[g] = {};
+    return T.groupSlotReaderIdx[g][key] || 0;
+  }
+
+  function setGroupSlotIdx(key, val) {
+    const g = getPageGroup(T.detectedPage);
+    if (!T.groupSlotReaderIdx[g]) T.groupSlotReaderIdx[g] = {};
+    T.groupSlotReaderIdx[g][key] = val;
+  }
 
   // ===== GET ACTIVE READER =====
   function getActiveReader() {
@@ -13,8 +44,8 @@
       if (slotData) return slotData;
     }
     if (T.readerList.length > 0) {
-      if (T.activeReaderIdx >= T.readerList.length) T.activeReaderIdx = 0;
-      return T.readerList[T.activeReaderIdx];
+      const idx = getGroupIdx();
+      return T.readerList[idx] || T.readerList[0];
     }
     return "Chưa set tên";
   }
@@ -26,6 +57,10 @@
       T.scheduleMode && T.scheduleSlots.length > 0 ? getCurrentSlot() : null;
     const isOverride = !!T.manualReaderOverride;
 
+    if (T.els.readerCard) {
+      T.els.readerCard.classList.toggle("tqs-card-override", isOverride);
+    }
+
     if (T.els.activeReaderName) {
       T.els.activeReaderName.textContent = reader.startsWith("@")
         ? reader
@@ -34,6 +69,7 @@
     }
 
     if (T.els.readerStatus) {
+      const idx = getGroupIdx();
       if (isOverride) {
         T.els.readerStatus.innerHTML = "🎯 Bạn chọn · Lượt sau tự đổi";
         T.els.readerStatus.style.color = "var(--green)";
@@ -47,17 +83,19 @@
           currentSlot.startH,
         );
         const minsLeft = Math.max(0, Math.round((slotEnd - now) / 60000));
-        T.els.readerStatus.innerHTML = `📅 ${currentSlot.startH}h–${currentSlot.endH}h · Còn ${minsLeft}p`;
+        const gName = getPageGroup(T.detectedPage) === "CA_DUA" ? "🐟🥥" : "🧈";
+        T.els.readerStatus.innerHTML = `📅 ${currentSlot.startH}h–${currentSlot.endH}h · Còn ${minsLeft}p ${gName}`;
         T.els.readerStatus.style.color = "var(--text-dim)";
       } else if (T.scheduleMode && T.scheduleSlots.length > 0) {
         T.els.readerStatus.textContent = "⏳ Ngoài giờ làm việc";
         T.els.readerStatus.style.color = "var(--text-muted)";
       } else if (T.readerList.length > 1 && T.autoRotate) {
-        const nextIdx = (T.activeReaderIdx + 1) % T.readerList.length;
-        T.els.readerStatus.innerHTML = `🔄 Tiếp: @${T.readerList[nextIdx]} (${T.activeReaderIdx + 1}/${T.readerList.length})`;
+        const nextIdx = (idx + 1) % T.readerList.length;
+        const gName = getPageGroup(T.detectedPage) === "CA_DUA" ? "🐟🥥" : "🧈";
+        T.els.readerStatus.innerHTML = `🔄 Tiếp: @${T.readerList[nextIdx]} (${idx + 1}/${T.readerList.length}) ${gName}`;
         T.els.readerStatus.style.color = "var(--text-dim)";
       } else if (T.readerList.length > 1) {
-        T.els.readerStatus.innerHTML = `🔒 Cố định @${T.readerList[T.activeReaderIdx]}`;
+        T.els.readerStatus.innerHTML = `🔒 Cố định @${T.readerList[idx]}`;
         T.els.readerStatus.style.color = "var(--text-dim)";
       } else if (T.readerList.length === 1) {
         T.els.readerStatus.textContent = "✅ 1 Reader";
@@ -114,8 +152,14 @@
       return;
     }
     T.readerList.push(n);
-    if (T.readerList.length === 1) T.activeReaderIdx = 0;
-    T.storage.syncSave({ savedReaders: T.readerList, activeReaderIdx: T.activeReaderIdx });
+    if (T.readerList.length === 1) {
+      T.groupReaderIdx = { CA_DUA: 0, POBO: 0 };
+      T.activeReaderIdx = 0;
+    }
+    T.storage.syncSave({
+      savedReaders: T.readerList,
+      groupReaderIdx: { ...T.groupReaderIdx },
+    });
     updateReaderDisplay();
     T.ui.showToast(`✓ Đã thêm @${n}`);
   }
@@ -123,22 +167,44 @@
   function removeReader(idx) {
     if (idx < 0 || idx >= T.readerList.length) return;
     const removed = T.readerList.splice(idx, 1)[0];
-    if (T.readerList.length === 0 || T.activeReaderIdx >= T.readerList.length) {
-      T.activeReaderIdx = 0;
+
+    // Fix tất cả group indices
+    for (const g of Object.keys(T.groupReaderIdx)) {
+      if (T.groupReaderIdx[g] >= T.readerList.length) {
+        T.groupReaderIdx[g] = 0;
+      }
     }
-    T.storage.syncSave({ savedReaders: T.readerList, activeReaderIdx: T.activeReaderIdx });
+    T.activeReaderIdx = getGroupIdx();
+
+    T.storage.syncSave({
+      savedReaders: T.readerList,
+      groupReaderIdx: { ...T.groupReaderIdx },
+    });
     updateReaderDisplay();
     T.ui.showToast(`🗑️ Đã xóa @${removed}`);
   }
 
   function rotateReader() {
-    T.manualReaderOverride = null;
-    if (!T.autoRotate) return;
+    // Override = "1 lượt" — chỉ clear override, KHÔNG rotate
+    // Rotation sẽ tiếp tục từ vị trí cũ (chưa hề thay đổi)
+    if (T.manualReaderOverride !== null) {
+      T.manualReaderOverride = null;
+      T.preOverrideReaderIdx = null;
+      T.preOverrideSlotKey = null;
+      updateReaderDisplay();
+      return;
+    }
+
+    if (!T.autoRotate) {
+      updateReaderDisplay();
+      return;
+    }
     if (T.scheduleMode && T.scheduleSlots.length > 0) {
       rotateScheduleReader();
     } else if (T.readerList.length > 1) {
-      T.activeReaderIdx = (T.activeReaderIdx + 1) % T.readerList.length;
-      chrome.storage.local.set({ activeReaderIdx: T.activeReaderIdx });
+      const newIdx = (getGroupIdx() + 1) % T.readerList.length;
+      setGroupIdx(newIdx);
+      chrome.storage.local.set({ groupReaderIdx: { ...T.groupReaderIdx } });
     }
     updateReaderDisplay();
   }
@@ -213,21 +279,24 @@
     const result = getCurrentSlot();
     if (!result) {
       if (!T.readerList.length) return "";
-      return T.readerList[T.activeReaderIdx] || T.readerList[0];
+      const idx = Math.min(getGroupIdx(), T.readerList.length - 1);
+      return T.readerList[idx] || T.readerList[0];
     }
     const { slot, slotIdx } = result;
+    if (!slot.readers || slot.readers.length === 0) return "";
     if (slot.readers.length === 1) return slot.readers[0];
     const key = `slot_${slotIdx}`;
-    return slot.readers[(T.slotReaderIdx[key] || 0) % slot.readers.length];
+    const rIdx = getGroupSlotIdx(key) % slot.readers.length;
+    return slot.readers[rIdx] || slot.readers[0];
   }
 
   function rotateScheduleReader() {
     const result = getCurrentSlot();
     if (!result || result.slot.readers.length <= 1) return;
     const key = `slot_${result.slotIdx}`;
-    T.slotReaderIdx[key] =
-      ((T.slotReaderIdx[key] || 0) + 1) % result.slot.readers.length;
-    chrome.storage.local.set({ slotReaderIdx: { ...T.slotReaderIdx } });
+    const newIdx = (getGroupSlotIdx(key) + 1) % result.slot.readers.length;
+    setGroupSlotIdx(key, newIdx);
+    chrome.storage.local.set({ groupSlotReaderIdx: JSON.parse(JSON.stringify(T.groupSlotReaderIdx)) });
     updateReaderDisplay();
   }
 
@@ -240,6 +309,8 @@
   // Export
   T.readers = {
     getActiveReader,
+    getPageGroup,
+    getGroupIdx,
     updateReaderDisplay,
     renderReaderChips,
     addReader,

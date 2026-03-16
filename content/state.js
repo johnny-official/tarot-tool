@@ -8,11 +8,21 @@ window.TQS = {
   PRICING_DATA: {},
   detectedPage: null,
 
+  // Page groups — CÁ+DỪA đồng bộ, BƠ riêng
+  PAGE_GROUPS: { CA: "CA_DUA", DUA: "CA_DUA", POBO: "POBO" },
+
   // Reader state
   readerList: [],
   activeReaderIdx: 0,
   autoRotate: true,
   manualReaderOverride: null,
+  preOverrideReaderIdx: null,
+  preOverrideSlotKey: null,
+
+  // Per-group reader rotation index
+  groupReaderIdx: { CA_DUA: 0, POBO: 0 },
+  // Per-group schedule slot reader index
+  groupSlotReaderIdx: { CA_DUA: {}, POBO: {} },
 
   // Schedule state
   scheduleSlots: [],
@@ -39,3 +49,4 @@ window.TQS = {
   isDragging: false,
   dragOffset: { x: 0, y: 0 },
 };
+

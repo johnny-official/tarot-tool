@@ -12,7 +12,9 @@
     Object.assign(_syncPending, data);
     clearTimeout(_syncTimer);
     _syncTimer = setTimeout(() => {
-      chrome.storage.local.set({ ..._syncPending });
+      try {
+        chrome.storage.local.set({ ..._syncPending });
+      } catch { /* silent — quota or API error */ }
       _syncPending = {};
     }, 200);
   }
@@ -30,7 +32,6 @@
         }
       }
     } catch {
-      // T.ui may not be loaded yet — safe fallback
       if (T.ui?.showToast) T.ui.showToast("⚠️ Thiếu config.json!", "error");
     }
   }
@@ -55,27 +56,48 @@
         "scheduleSlots",
         "scheduleMode",
         "slotReaderIdx",
+        "groupReaderIdx",
+        "groupSlotReaderIdx",
         "shiftOrders",
         "shiftStartTime",
       ]);
 
       if (Array.isArray(data.savedReaders)) T.readerList = data.savedReaders;
-      if (typeof data.activeReaderIdx === "number") {
-        T.activeReaderIdx =
-          T.readerList.length > 0
-            ? data.activeReaderIdx % T.readerList.length
-            : 0;
+
+      // Load per-group reader indices (với backward compat)
+      if (data.groupReaderIdx && typeof data.groupReaderIdx === "object") {
+        T.groupReaderIdx = { CA_DUA: 0, POBO: 0, ...data.groupReaderIdx };
+      } else if (typeof data.activeReaderIdx === "number") {
+        // Migration: cũ dùng 1 index → set cho tất cả groups
+        const idx = T.readerList.length > 0 ? data.activeReaderIdx % T.readerList.length : 0;
+        T.groupReaderIdx = { CA_DUA: idx, POBO: idx };
       }
+      // Đồng bộ activeReaderIdx cho backward compat
+      const g = T.PAGE_GROUPS[T.detectedPage] || "CA_DUA";
+      T.activeReaderIdx = T.groupReaderIdx[g] || 0;
+
       if (typeof data.autoRotate !== "undefined") T.autoRotate = data.autoRotate;
       if (T.els.autoRotateToggle) T.els.autoRotateToggle.checked = T.autoRotate;
 
       if (data.schedule && T.els.scheduleInput)
         T.els.scheduleInput.value = data.schedule;
+
       if (Array.isArray(data.scheduleSlots)) {
         T.scheduleSlots = data.scheduleSlots;
         T.slotReaderIdx = data.slotReaderIdx || {};
+        // Load per-group slot indices
+        if (data.groupSlotReaderIdx && typeof data.groupSlotReaderIdx === "object") {
+          T.groupSlotReaderIdx = { CA_DUA: {}, POBO: {}, ...data.groupSlotReaderIdx };
+        } else {
+          // Migration: cũ dùng 1 slotReaderIdx → copy cho tất cả groups
+          T.groupSlotReaderIdx = {
+            CA_DUA: { ...T.slotReaderIdx },
+            POBO: { ...T.slotReaderIdx },
+          };
+        }
         T.readers.startScheduleTimer();
       }
+
       T.scheduleMode =
         typeof data.scheduleMode !== "undefined"
           ? data.scheduleMode
@@ -105,11 +127,10 @@
         T.shiftOrders = changes.shiftOrders.newValue || [];
         needsDash = true;
       }
-      if (
-        changes.activeReaderIdx &&
-        typeof changes.activeReaderIdx.newValue === "number"
-      ) {
-        T.activeReaderIdx = changes.activeReaderIdx.newValue;
+      if (changes.groupReaderIdx && typeof changes.groupReaderIdx.newValue === "object") {
+        T.groupReaderIdx = { CA_DUA: 0, POBO: 0, ...changes.groupReaderIdx.newValue };
+        const g = T.PAGE_GROUPS[T.detectedPage] || "CA_DUA";
+        T.activeReaderIdx = T.groupReaderIdx[g] || 0;
         needsReader = true;
       }
       if (changes.savedReaders) {
@@ -124,7 +145,10 @@
       }
       if (changes.scheduleSlots) {
         T.scheduleSlots = changes.scheduleSlots.newValue || [];
-        T.slotReaderIdx = {};
+        needsReader = true;
+      }
+      if (changes.groupSlotReaderIdx && typeof changes.groupSlotReaderIdx.newValue === "object") {
+        T.groupSlotReaderIdx = { CA_DUA: {}, POBO: {}, ...changes.groupSlotReaderIdx.newValue };
         needsReader = true;
       }
       if (changes.slotReaderIdx) {

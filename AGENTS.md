@@ -1,128 +1,154 @@
 # Tarot QuickSale — AI Agent Context
 
-> **Đọc file này trước khi làm bất kỳ thay đổi nào.** File này chứa tất cả thông tin cần thiết để hiểu dự án.
+> **Read this file before making any changes.** This file contains all information needed to understand the project.
 
 ---
 
-## 1. Tổng quan
+## 1. Overview
 
-**Chrome Extension (Manifest V3)** hỗ trợ nhân viên sale Tarot chốt đơn nhanh trên **Facebook Business Suite**.
+**Chrome Extension (Manifest V3)** helping Tarot sales staff quickly finalize orders on **Facebook Business Suite**.
 
-**Chức năng chính:**
-- Inject floating panel vào `business.facebook.com`
-- Auto-detect fanpage (Bơ/Dừa/Cá) từ URL
-- Auto-detect khách từ Facebook hay Instagram (🔵/🟣)
-- Chọn dịch vụ → chọn gói → copy tin nhắn format chuẩn
-- Quản lý reader (tự xoay, lịch ca)
-- Dashboard đơn hàng + báo cáo ca
+**Core features:**
+- Inject floating panel into `business.facebook.com`
+- Auto-detect fanpage (Bơ/Dừa/Cá) from URL
+- Auto-detect customer source: Facebook (🔵) or Instagram (🟣)
+- Select service → select package → copy formatted message
+- Reader management (auto-rotation, schedule shifts)
+- Page-group sync: CÁ + DỪA share rotation, POBO independent
+- Order dashboard + shift reports
 
 ---
 
-## 2. Tech Stack & Quy tắc
+## 2. Tech Stack & Rules
 
-| Quy tắc | Chi tiết |
-|---------|---------|
-| **Framework** | ❌ Không dùng. Vanilla JS thuần |
-| **Build tool** | ❌ Không dùng. Load trực tiếp qua manifest |
-| **State** | Tất cả qua `window.TQS` — không dùng local var cho shared state |
-| **Module pattern** | IIFE, export qua `T.moduleName = { ... }` |
+| Rule | Details |
+|------|---------|
+| **Framework** | ❌ None. Vanilla JS only |
+| **Build tool** | ❌ None. Direct load via manifest |
+| **State** | All via `window.TQS` — no local vars for shared state |
+| **Module pattern** | IIFE, export via `T.moduleName = { ... }` |
 | **Storage** | `T.storage.syncSave()` — debounced 200ms |
-| **DOM** | `DocumentFragment` khi tạo nhiều elements |
-| **CSS** | Dùng `var(--accent)`, `var(--green)`,... từ `:root` |
-| **Ngôn ngữ** | UI text, toast, comments = **tiếng Việt** |
-| **Debug** | ❌ Không thêm `console.log` |
+| **DOM** | `DocumentFragment` for batch element creation |
+| **CSS** | Use `var(--accent)`, `var(--green)`, etc. from `:root` |
+| **Language** | UI text, toasts, comments = **Vietnamese** |
+| **Debug** | ❌ No `console.log` |
 
 ---
 
-## 3. Kiến trúc file
+## 3. File Architecture
 
 ```
 tarot-tool/
-├── manifest.json          ← Chrome extension config (v3.0.0)
-├── background.js          ← Service Worker — chỉ toggle panel (6 dòng)
-├── content.css            ← Glassmorphism dark theme (622 dòng)
-├── config.json            ← Page IDs thật (committed)
-├── config.example.json    ← Template cho người mới
-├── price.json             ← Bảng giá — SINGLE SOURCE OF TRUTH
+├── manifest.json          ← Chrome extension config (v3)
+├── background.js          ← Service Worker — toggle only (6 lines)
+├── content.css            ← Minimal dark theme
+├── config.json            ← Real page IDs (committed)
+├── config.example.json    ← Template for newcomers
+├── price.json             ← Pricing — SINGLE SOURCE OF TRUTH
 │
-├── content/               ← 8 module JS, load theo thứ tự ↓
+├── content/               ← 8 JS modules, loaded in order ↓
 │   ├── state.js           ← (1) window.TQS namespace + mutable state
-│   ├── constants.js       ← (2) Viết tắt dịch vụ, emoji, text config
-│   ├── detection.js       ← (3) Auto-detect page, platform, tên khách
+│   ├── constants.js       ← (2) Service abbreviations, emoji, text config
+│   ├── detection.js       ← (3) Auto-detect page, platform, customer name
 │   ├── storage.js         ← (4) Chrome storage CRUD, cross-tab sync
-│   ├── readers.js         ← (5) Reader CRUD, rotation, schedule
+│   ├── readers.js         ← (5) Reader CRUD, rotation, schedule, page-group sync
 │   ├── orders.js          ← (6) Order CRUD, message gen, report
 │   ├── ui.js              ← (7) Panel HTML, toast, modal, drag
-│   └── main.js            ← (8) Init, events, SPA observer — LOAD CUỐI
+│   └── main.js            ← (8) Init, events, SPA observer — LOAD LAST
 │
-├── popup.html + popup.js + style.css  ← Popup dashboard (chưa dùng)
+├── popup.html + popup.js + style.css  ← Popup dashboard (unused)
 └── icons/                 ← Extension icons (SVG)
 ```
 
-### Load Order (quan trọng!)
+### Load Order (critical!)
 
 ```
 state → constants → detection → storage → readers → orders → ui → main
   ↑                                                                  |
-  └──────────── Tất cả đọc/ghi qua window.TQS ─────────────────────┘
+  └──────────── All read/write via window.TQS ───────────────────────┘
 ```
 
-**Khi thêm module mới:** PHẢI update array `js` trong `manifest.json` đúng thứ tự.
+**When adding a new module:** MUST update the `js` array in `manifest.json` in the correct order.
 
 ---
 
-## 4. Chi tiết từng module
+## 4. Module Details
 
-### `state.js` (41 dòng)
-Khai báo `window.TQS = { ... }` với tất cả mutable state. **Không có logic.**
+### `state.js`
+Global state declarations. **No logic here.**
+- `PAGE_GROUPS` — maps page keys to sync groups: `{ CA: "CA_DUA", DUA: "CA_DUA", POBO: "POBO" }`
+- `groupReaderIdx` — per-group rotation index: `{ CA_DUA: 0, POBO: 0 }`
+- `groupSlotReaderIdx` — per-group schedule slot rotation
 
-### `constants.js` (54 dòng)
-Bảng map tên → viết tắt. Sửa file này để thay đổi output text:
+### `constants.js`
+Abbreviation maps. Edit this file to change output text:
 - `T.SERVICE_ABBR` — Tarot→"TA", Lenormand→"LENOR", Bài Tây→"TÂY"
 - `T.PACKAGE_ABBR` — 1 CS→"1CS", 7 CS→"7CS", ...
 - `T.SOURCE_EMOJI` — facebook→"🔵", instagram→"🟣"
 
-### `detection.js` (98 dòng)
-- `detectPageFromURL()` — check `asset_id`, `page_id`, `mailbox_id` từ URL
-- `detectSourcePlatform()` — check **chỉ trong conversation area** (không scan sidebar)
-- `tryAutoFillCustomer()` — đọc tên khách từ conversation header
+### `detection.js`
+- `detectPageFromURL()` — check `asset_id`, `page_id`, `mailbox_id` from URL
+- `detectSourcePlatform()` — 5-layer detection:
+  1. URL path `/inbox/instagram_direct`
+  2. URL param `thread_type` containing "IG"
+  3. URL params `channel=instagram`, `ig_thread`
+  4. DOM text "Instagram profile" in conversation panel
+  5. DOM attributes `data-channel`, `aria-label`
+- `tryAutoFillCustomer()` — read customer name from conversation header
+- `initConversationObserver()` — MutationObserver on `[role=main]`, debounce 300ms
 
-### `storage.js` (154 dòng)
-- `syncSave(data)` — debounced 200ms write
+### `storage.js`
+- `syncSave(data)` — debounced 200ms write with try-catch
 - `loadConfig()` — fetch `config.json` → build `T.PAGE_IDS` map
 - `loadPricingData()` — fetch `price.json`
-- `loadData()` — load tất cả saved state từ `chrome.storage.local`
-- `initCrossTabSync()` — listener `chrome.storage.onChanged`
+- `loadData()` — load all saved state, auto-migrate `activeReaderIdx` → `groupReaderIdx`
+- `initCrossTabSync()` — listener `chrome.storage.onChanged` for group indices
 
-### `readers.js` (252 dòng)
-- `addReader(name)`, `removeReader(idx)`, `rotateReader()`
-- `getActiveReader()` — ưu tiên: manual override > schedule > rotation
-- `parseSchedule(text)` — parse "8h - 14h @Hậu @Mai" format
-- `startScheduleTimer()` — auto-update mỗi 60s
+### `readers.js`
+- `getPageGroup(page)` — returns `"CA_DUA"` or `"POBO"`
+- `getGroupIdx()` / `setGroupIdx()` — per-group reader rotation index
+- `getActiveReader()` — priority: manual override > schedule > rotation
+- `rotateReader()` — **if override: clear only, NO rotation** (override = one-time pick)
+- `parseSchedule(text)` — parse "8h - 14h @Reader1 @Reader2" format
+- `startScheduleTimer()` — auto-update every 60s
 
-### `orders.js` (494 dòng) — file lớn nhất
-- `generateMessage()` — tạo output text chuẩn
+### `orders.js`
+- `generateMessage()` — build formatted output text
+- `copyAndSave()` — validate → detect platform → copy → save → rotate (with `_copying` lock)
 - `populateServices()` / `populatePackages()` — dropdown logic
-- `copyAndSave()` — validate → detect platform → copy → save → rotate
-- `saveOrder()`, `deleteOrder()`, `openEditOrder()`, `saveEditOrder()`
 - `buildReport()`, `copyReport()`, `resetShift()`
 
-### `ui.js` (297 dòng)
-- `createPanelHTML()` — toàn bộ HTML template
-- `injectPanel()` — inject vào body
-- `collectElements(panel)` — cache DOM refs vào `T.els`
+### `ui.js`
+- `createPanelHTML()` — full HTML template
+- `injectPanel()` — inject into body
+- `collectElements(panel)` — cache DOM refs into `T.els`
 - `showToast()`, `showConfirm()` — feedback UI
 - `initDrag()`, `initControls()` — panel behavior
 
-### `main.js` (215 dòng)
-- `init()` — sequence: inject → loadConfig → loadPricing → loadData → events
-- `initEvents()` — wire tất cả event listeners
-- `initShortcuts()` — Alt+T toggle, Chrome extension icon click
-- `initSPAObserver()` — URL polling 2s (FB Business Suite là SPA)
+### `main.js`
+- `init()` — sequence: inject → loadConfig + loadPricing (parallel) → loadData → events
+- `initEvents()` — wire all event listeners
+- `initShortcuts()` — Alt+T toggle, Alt+C copy, Alt+1..9 package select
+- `initSPAObserver()` — URL polling 2s + `selected_item_id` tracking
+- `initConversationObserver()` — DOM-level conversation change detection
 
 ---
 
-## 5. Data Model
+## 5. Page-Group Sync
+
+CÁ + DỪA **share** reader rotation. POBO is **independent**.
+
+| Group | Pages | Index |
+|-------|-------|-------|
+| `CA_DUA` | CÁ, DỪA | `groupReaderIdx.CA_DUA` |
+| `POBO` | Pờ Bơ | `groupReaderIdx.POBO` |
+
+Copy on CÁ → rotate CA_DUA index → DỪA sees the new reader.
+Copy on POBO → rotate POBO index → CÁ/DỪA unaffected.
+
+---
+
+## 6. Data Model
 
 ### config.json
 ```json
@@ -131,21 +157,17 @@ Bảng map tên → viết tắt. Sửa file này để thay đổi output text:
     "POBO": { "fbPageId": "918768421315641", "name": "PỜ BƠ" },
     "DUA":  { "fbPageId": "513140915211900", "name": "DỪA" },
     "CA":   { "fbPageId": "105889999207829", "name": "CÁ" }
-  },
-  "settings": { "salaryPercent": 5, "shiftHistoryMax": 30 }
+  }
 }
 ```
 
-### price.json (sửa file này để update giá)
+### price.json (edit this file to update prices)
 ```json
 {
   "POBO": {
     "name": "PỜ BƠ", "icon": "🧈", "color": "purple",
     "services": {
-      "Tarot":    { "1 Y/N": 9, "1 CS": 20, "3 CS": 55, "5 CS": 85, "7 CS": 115 },
-      "Lenormand": { "1 Y/N": 12, "1 CS": 25, ... },
-      "Bài Tây":  { ... },
-      "⏱ Gói Thời Gian": { "30 Phút": 150, ... }
+      "Tarot": { "1 Y/N": 9, "1 CS": 20, "3 CS": 55, "5 CS": 85, "7 CS": 115 }
     }
   }
 }
@@ -153,18 +175,18 @@ Bảng map tên → viết tắt. Sửa file này để thay đổi output text:
 
 ### chrome.storage.local keys
 
-| Key | Type | Mô tả |
-|-----|------|-------|
-| `savedReaders` | `string[]` | Danh sách reader |
-| `activeReaderIdx` | `number` | Index reader đang active |
-| `autoRotate` | `boolean` | Tự xoay reader |
-| `shiftOrders` | `Order[]` | Đơn trong ca hiện tại |
-| `shiftStartTime` | `string (ISO)` | Thời gian bắt đầu ca |
-| `shiftHistory` | `Shift[]` | Lịch sử ca (max 30) |
-| `schedule` | `string` | Raw text lịch |
+| Key | Type | Description |
+|-----|------|-------------|
+| `savedReaders` | `string[]` | Reader list |
+| `groupReaderIdx` | `object` | Per-group rotation index `{ CA_DUA: n, POBO: n }` |
+| `groupSlotReaderIdx` | `object` | Per-group schedule slot indices |
+| `autoRotate` | `boolean` | Auto-rotate enabled |
+| `shiftOrders` | `Order[]` | Orders in current shift |
+| `shiftStartTime` | `string (ISO)` | Shift start time |
+| `shiftHistory` | `Shift[]` | Shift history (max 30) |
+| `schedule` | `string` | Raw schedule text |
 | `scheduleSlots` | `Slot[]` | Parsed time slots |
-| `scheduleMode` | `boolean` | Đang dùng lịch auto |
-| `slotReaderIdx` | `Record<string, number>` | Reader index per slot |
+| `scheduleMode` | `boolean` | Schedule mode active |
 
 ### Order object
 ```typescript
@@ -176,8 +198,8 @@ interface Order {
   reader: string;
   service: string;       // "Tarot" | "Custom" | ...
   package: string;       // "1 CS" | ...
-  packageDisplay: string; // "1CS TA" (viết tắt cho output)
-  price: number;         // đơn vị: k (nghìn VND)
+  packageDisplay: string; // "1CS TA" (abbreviated for output)
+  price: number;         // unit: k (thousands VND)
   note: string;
   timestamp: string;     // ISO
 }
@@ -185,25 +207,25 @@ interface Order {
 
 ---
 
-## 6. Output Format
+## 7. Output Format
 
-### POBO (Pờ Bơ) — KHÔNG có icon page
+### POBO (Pờ Bơ) — NO page icon
 ```
 1CS TA - 20k 🔵Phương Thảo @Dương Thư Trâm
 7CS TA - 115k 🟣Tuyet Nhii @Nguyễn Nguyên
 ```
 
-### CÁ, DỪA — CÓ icon + tên page
+### CÁ, DỪA — WITH page icon + name
 ```
 🐟[CÁ] CS TA - 50k 🔵Khách Test @Reader1
 🥥[DỪA] 3CS TA - 55k 🟣Khách IG @Reader2
 ```
 
-**🔵 = Facebook, 🟣 = Instagram** — auto-detected từ conversation DOM.
+**🔵 = Facebook, 🟣 = Instagram** — auto-detected from URL path, `thread_type` param, and DOM.
 
 ---
 
-## 7. Module Pattern
+## 8. Module Pattern
 
 ```javascript
 (function () {
@@ -219,40 +241,51 @@ interface Order {
 
 ---
 
-## 8. Khi sửa code — CHECKLIST
+## 9. Code Change Checklist
 
-- [ ] Không dùng framework / build tool
-- [ ] Data từ `price.json` (giá) và `config.json` (page IDs)
-- [ ] Storage writes qua `T.storage.syncSave()`
-- [ ] New DOM elements dùng `DocumentFragment`
-- [ ] Cross-tab sync đã handle trong `storage.js`
-- [ ] CSS dùng variables từ `:root`
-- [ ] UI text bằng tiếng Việt
-- [ ] Export API qua `T.moduleName = { ... }`
-- [ ] Thêm module → update `manifest.json` JS array
-- [ ] Test: reload extension trên `chrome://extensions`
+- [ ] No framework / build tool
+- [ ] Pricing from `price.json`, page IDs from `config.json`
+- [ ] Storage writes via `T.storage.syncSave()`
+- [ ] New DOM elements use `DocumentFragment`
+- [ ] Cross-tab sync handled in `storage.js`
+- [ ] CSS uses variables from `:root`
+- [ ] UI text in Vietnamese
+- [ ] Export API via `T.moduleName = { ... }`
+- [ ] New module → update `manifest.json` JS array
+- [ ] Test: reload extension on `chrome://extensions`
 
 ---
 
-## 9. Kiểm tra nhanh
+## 10. Quick Checks
 
 ```bash
-# Syntax check tất cả module
+# Syntax check all modules
 for f in content/*.js; do node -c "$f" && echo "✅ $f"; done
 
-# Brace balance CSS
+# CSS brace balance
 echo "{ $(grep -c '{' content.css)  } $(grep -c '}' content.css)"
 
 # Cross-module refs
-grep -rn "T\.\w\+ = {" content/*.js  # Xem exports
-grep -rn "T\.\w\+\.\w\+" content/*.js  # Xem cross-calls
+grep -rn "T\.\w\+ = {" content/*.js  # View exports
+grep -rn "T\.\w\+\.\w\+" content/*.js  # View cross-calls
 ```
 
 ---
 
-## 10. Known Limitations
+## 11. Keyboard Shortcuts
 
-- FB Business Suite là SPA → panel dùng **URL polling 2s** để detect thay đổi
-- Facebook thường xuyên thay đổi DOM → selector detection có thể cần update
-- `config.json` phải có sẵn trước khi load extension
-- Schedule chỉ hỗ trợ format: `8h - 14h @Reader1 @Reader2`
+| Shortcut | Action |
+|----------|--------|
+| `Alt+T` | Toggle panel |
+| `Alt+C` | Quick Copy & Save |
+| `Alt+1..9` | Select package by index |
+
+---
+
+## 12. Known Limitations
+
+- FB Business Suite is a SPA → panel uses **URL polling 2s** + **MutationObserver** to detect changes
+- Facebook frequently changes DOM → detection selectors may need updates
+- `config.json` must exist before loading extension
+- Schedule only supports format: `8h - 14h @Reader1 @Reader2`
+- Manual override = one-time pick, does not consume a rotation turn

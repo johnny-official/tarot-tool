@@ -103,7 +103,7 @@
             if (svc.startsWith("⏱")) return [sA, pA].filter(Boolean).join(" ");
             return [pA, sA].filter(Boolean).join(" ");
           })(),
-      price: T.currentPrice,
+      price: Number(T.currentPrice) || 0,
       note: T.els.noteInput.value.trim(),
       timestamp: new Date().toISOString(),
     };
@@ -180,7 +180,7 @@
 
   // ===== DASHBOARD =====
   function updateDashboard() {
-    const revenue = T.shiftOrders.reduce((s, o) => s + o.price, 0);
+    const revenue = T.shiftOrders.reduce((s, o) => s + (Number(o.price) || 0), 0);
     if (T.els.totalOrders) T.els.totalOrders.textContent = T.shiftOrders.length;
     if (T.els.totalRevenue) T.els.totalRevenue.textContent = revenue + "k";
     renderOrderList();
@@ -279,7 +279,7 @@
 
   // ===== REPORT =====
   function buildReport() {
-    const revenue = T.shiftOrders.reduce((s, o) => s + o.price, 0);
+    const revenue = T.shiftOrders.reduce((s, o) => s + (Number(o.price) || 0), 0);
     const salary = Math.floor(revenue * 0.05);
     const now = new Date();
     const startTime = T.shiftStartTime ? new Date(T.shiftStartTime) : now;
@@ -303,7 +303,7 @@
       const r = o.reader || "?";
       if (!byReader[r]) byReader[r] = { orders: 0, revenue: 0 };
       byReader[r].orders++;
-      byReader[r].revenue += o.price;
+      byReader[r].revenue += Number(o.price) || 0;
     });
 
     let report = `═══════════════════════════════════════\n`;
@@ -313,7 +313,7 @@
 
     let orderNum = 0;
     for (const [pageName, orders] of Object.entries(byPage)) {
-      const pageRevenue = orders.reduce((s, o) => s + o.price, 0);
+      const pageRevenue = orders.reduce((s, o) => s + (Number(o.price) || 0), 0);
       report += `┌─── ${pageName} (${orders.length} đơn • ${pageRevenue}k) ───\n│\n`;
       orders.forEach((o) => {
         orderNum++;
@@ -361,7 +361,7 @@
       T.ui.showToast("Chưa có đơn!", "warning");
       return;
     }
-    const total = T.shiftOrders.reduce((s, o) => s + o.price, 0);
+    const total = T.shiftOrders.reduce((s, o) => s + (Number(o.price) || 0), 0);
     const ok = await T.ui.showConfirm(
       `Reset ca? <br><b style="color:#22c55e">${T.shiftOrders.length} đơn · ${total}k</b>`,
     );

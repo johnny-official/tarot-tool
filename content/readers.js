@@ -83,7 +83,7 @@
           currentSlot.startH,
         );
         const minsLeft = Math.max(0, Math.round((slotEnd - now) / 60000));
-        const gName = getPageGroup(T.detectedPage) === "CA_DUA" ? "🐟🥥" : "🧈";
+        const gName = getPageGroup(T.detectedPage) === "CA_DUA" ? "CÁ·DỪA" : "BƠ";
         T.els.readerStatus.innerHTML = `📅 ${currentSlot.startH}h–${currentSlot.endH}h · Còn ${minsLeft}p ${gName}`;
         T.els.readerStatus.style.color = "var(--text-dim)";
       } else if (T.scheduleMode && T.scheduleSlots.length > 0) {
@@ -91,7 +91,7 @@
         T.els.readerStatus.style.color = "var(--text-muted)";
       } else if (T.readerList.length > 1 && T.autoRotate) {
         const nextIdx = (idx + 1) % T.readerList.length;
-        const gName = getPageGroup(T.detectedPage) === "CA_DUA" ? "🐟🥥" : "🧈";
+        const gName = getPageGroup(T.detectedPage) === "CA_DUA" ? "CÁ·DỪA" : "BƠ";
         T.els.readerStatus.innerHTML = `🔄 Tiếp: @${T.readerList[nextIdx]} (${idx + 1}/${T.readerList.length}) ${gName}`;
         T.els.readerStatus.style.color = "var(--text-dim)";
       } else if (T.readerList.length > 1) {

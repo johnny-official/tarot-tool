@@ -11,7 +11,6 @@
   let _copying = false;
   function generateMessage() {
     const page = T.detectedPage;
-    const pageName = T.PRICING_DATA[page]?.name || page;
     const customer = (T.els.customerInput?.value || "").trim();
     const reader = T.readers.getActiveReader().replace(/^@/, "");
     const note = (T.els.noteInput?.value || "").trim();
@@ -34,14 +33,9 @@
       }
     }
 
-    let msg;
     const srcEmoji = T.SOURCE_EMOJI[T.sourcePlatform] || "🔵";
-    if (page === "POBO") {
-      msg = `${packageDisplay} - ${T.currentPrice}k ${srcEmoji}${customer} @${reader}`;
-    } else {
-      const pageIcon = T.PRICING_DATA[page]?.icon || "🔮";
-      msg = `${pageIcon}[${pageName}] ${packageDisplay} - ${T.currentPrice}k ${srcEmoji}${customer} @${reader}`;
-    }
+    const pageTag = page === "CA" ? "[CÁ] " : "";
+    let msg = `${pageTag}${packageDisplay} - ${T.currentPrice}k ${srcEmoji}${customer} @${reader}`;
     if (note) msg += ` ${note}`;
     return msg;
   }

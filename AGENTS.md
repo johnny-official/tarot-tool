@@ -209,19 +209,15 @@ interface Order {
 
 ## 7. Output Format
 
-### POBO (Pờ Bơ) — NO page icon
+### Tất cả page — format thống nhất (không icon trang)
 ```
 1CS TA - 20k 🔵Phương Thảo @Dương Thư Trâm
 7CS TA - 115k 🟣Tuyet Nhii @Nguyễn Nguyên
+[CÁ] CS TA - 50k 🔵Khách Test @Reader1
+3CS TA - 55k 🟣Khách IG @Reader2
 ```
 
-### CÁ, DỪA — WITH page icon + name
-```
-🐟[CÁ] CS TA - 50k 🔵Khách Test @Reader1
-🥥[DỪA] 3CS TA - 55k 🟣Khách IG @Reader2
-```
-
-**🔵 = Facebook, 🟣 = Instagram** — auto-detected from URL path, `thread_type` param, and DOM.
+**Chỉ CÁ có prefix `[CÁ]`** để phân biệt với DỪA. BƠ + DỪA dùng format đơn giản.
 
 ---
 

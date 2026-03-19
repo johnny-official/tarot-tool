@@ -132,6 +132,7 @@
 
     // Re-detect platform + auto-fill
     T.sourcePlatform = detectSourcePlatform();
+    if (T.ui?.updateSourceBadge) T.ui.updateSourceBadge();
     tryAutoFillCustomer();
   }
 

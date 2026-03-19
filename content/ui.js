@@ -17,6 +17,7 @@
         </div>
         <div class="tqs-header-actions">
           <span class="tqs-page-badge tqs-badge-cyan" id="tqs-page-badge">...</span>
+          <span class="tqs-source-badge tqs-source-fb" id="tqs-source-badge" title="Nguồn">🔵</span>
           <span class="tqs-stats-inline" title="Đơn / Tiền"><span id="tqs-total-orders">0</span>đ · <span id="tqs-total-revenue">0k</span></span>
           <button class="tqs-header-btn" id="tqs-report" title="📋 Báo Cáo">📋</button>
           <button class="tqs-header-btn" id="tqs-reset" title="🔄 Reset">🔄</button>
@@ -149,6 +150,7 @@ VD:
       reportBtn: panel.querySelector("#tqs-report"),
       resetBtn: panel.querySelector("#tqs-reset"),
       pageBadge: panel.querySelector("#tqs-page-badge"),
+      sourceBadge: panel.querySelector("#tqs-source-badge"),
       readerCard: panel.querySelector("#tqs-reader-card"),
       activeReaderName: panel.querySelector("#tqs-active-reader-name"),
       readerStatus: panel.querySelector("#tqs-reader-status"),
@@ -284,6 +286,16 @@ VD:
     }
   }
 
+  // ===== UPDATE SOURCE BADGE =====
+  function updateSourceBadge() {
+    const badge = T.els.sourceBadge;
+    if (!badge) return;
+    const isIG = T.sourcePlatform === "instagram";
+    badge.textContent = isIG ? "🟣" : "🔵";
+    badge.className = `tqs-source-badge ${isIG ? "tqs-source-ig" : "tqs-source-fb"}`;
+    badge.title = isIG ? "Instagram" : "Facebook";
+  }
+
   // Export
   T.ui = {
     injectPanel,
@@ -293,5 +305,6 @@ VD:
     initDrag,
     initControls,
     updatePageBadge,
+    updateSourceBadge,
   };
 })();

@@ -112,6 +112,13 @@
 .tqs-badge-amber  { background: rgba(251,191,36,0.1); color: #fbbf24; }
 .tqs-badge-purple { background: rgba(167,139,250,0.1); color: #c4b5fd; }
 
+.tqs-source-badge {
+  font-size: 10px;
+  line-height: 1;
+  transition: all var(--transition);
+}
+.tqs-source-ig { filter: brightness(1.2); }
+
 .tqs-stats-inline {
   font-size: 10px;
   font-weight: 700;
@@ -315,6 +322,7 @@
 }
 .tqs-input:focus, .tqs-select:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(124,106,239,0.15);
 }
 .tqs-input::placeholder { color: var(--text-muted); }
 .tqs-input:disabled, .tqs-select:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -386,6 +394,12 @@ input:checked + .tqs-check::after {
 }
 .tqs-price-tag.tqs-price-active {
   color: var(--green);
+  animation: tqs-price-pulse 0.3s ease;
+}
+@keyframes tqs-price-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 .tqs-btn {

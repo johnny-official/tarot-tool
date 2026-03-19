@@ -207,6 +207,7 @@
 
         // Detect conversation change (item-level)
         T.sourcePlatform = T.detection.detectSourcePlatform();
+        T.ui.updateSourceBadge();
         T.detection.tryAutoFillCustomer();
       }
     }, 2000);
@@ -239,6 +240,7 @@
     }
     T.ui.updatePageBadge();
     T.sourcePlatform = T.detection.detectSourcePlatform();
+    T.ui.updateSourceBadge();
 
     // 4. Load saved data from storage
     await T.storage.loadData();

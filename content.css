@@ -831,6 +831,45 @@ input:checked + .tqs-check::after {
   color: #a090e8;
   font-weight: 600;
 }
+.tqs-aichat-bubble-model em {
+  color: #9898b0;
+  font-style: italic;
+}
+
+/* ─── AI formatted output ─── */
+.tqs-ai-section-header {
+  font-weight: 600;
+  font-size: 11.5px;
+  color: #c0b8f0;
+  padding: 5px 0 3px;
+  margin-top: 4px;
+  border-bottom: 1px solid rgba(160,144,232,0.12);
+  letter-spacing: 0.02em;
+}
+.tqs-ai-section-header:first-child { margin-top: 0; }
+.tqs-ai-section-icon { font-size: 12px; }
+
+.tqs-ai-list-item {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.tqs-ai-list-num {
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(10,132,255,0.12);
+  color: #6ab4ff;
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 
 /* ─── Typing indicator ─── */
 .tqs-aichat-typing {

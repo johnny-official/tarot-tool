@@ -44,6 +44,7 @@ window.TQS = {
   aiChatApiKey: null,       // Gemini API key (loaded from chrome.storage.local)
   aiChatLoading: false,     // Request in-flight flag
   aiChatMaxHistory: 5,      // Max messages to keep in session (configurable)
+  aiChatSendContext: true,  // Send chat history as context (toggle in settings)
 
   // DOM element refs (populated by ui.js)
   els: {},

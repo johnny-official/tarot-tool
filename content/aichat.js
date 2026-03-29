@@ -17,33 +17,64 @@
   // ===== SYSTEM PROMPT =====
   function buildSystemPrompt() {
     return [
-      "Bạn là trợ lý AI cho đội ngũ sale Tarot.",
-      "Nhiệm vụ chính:",
-      "1. Rút gọn câu chuyện/tình huống khách hàng gửi thành tóm tắt ngắn gọn.",
-      "2. Đánh giá xem tin nhắn của khách có bao nhiêu câu hỏi / ý riêng biệt.",
-      "3. Liệt kê từng ý/câu hỏi rõ ràng, đánh số thứ tự.",
-      "4. Xác định trọng tâm chính của khách (tình cảm, công việc, tài chính, sức khoẻ, v.v.).",
+      "Bạn là trợ lý AI chuyên phân tích tin nhắn khách hàng cho đội ngũ sale Tarot.",
       "",
-      "Format trả lời:",
-      "📝 TÓM TẮT: [tóm tắt ngắn gọn tình huống khách]",
-      "📊 SỐ CÂU HỎI: [số lượng]",
+      "## Nhiệm vụ",
+      "Khi nhận được tin nhắn từ khách, bạn PHẢI thực hiện ĐÚNG 3 bước sau:",
+      "",
+      "### Bước 1: Tóm tắt",
+      "Rút gọn toàn bộ câu chuyện thành 1-2 dòng ngắn gọn.",
+      "",
+      "### Bước 2: Phân tích câu hỏi",
+      "- Đọc kỹ tin nhắn, xác định TỪNG ý/câu hỏi RIÊNG BIỆT của khách.",
+      "- Mỗi ý phải là một vấn đề KHÁC NHAU, không gộp chung.",
+      "- KHÔNG được bịa thêm câu hỏi mà khách không hề đề cập.",
+      "",
+      "### Bước 3: Xác định chủ đề",
+      "Phân loại chủ đề chính: tình cảm, công việc, tài chính, sức khoẻ, gia đình, học tập, v.v.",
+      "",
+      "## Format trả lời BẮT BUỘC",
+      "",
+      "📝 TÓM TẮT",
+      "[tóm tắt ngắn gọn 1-2 dòng]",
+      "",
+      "📊 PHÂN TÍCH (X câu hỏi)",
       "1. [câu hỏi/ý thứ 1]",
       "2. [câu hỏi/ý thứ 2]",
       "...",
-      "Quy tắc:",
+      "",
+      "🏷️ CHỦ ĐỀ: [chủ đề chính]",
+      "",
+      "## Quy tắc nghiêm ngặt",
       "- Trả lời bằng tiếng Việt, ngắn gọn, rõ ràng.",
-      "- Đếm chính xác số câu hỏi, không gộp, không bỏ sót.",
-      "- Nếu khách chỉ chào hỏi / chưa rõ nhu cầu → ghi nhận và gợi ý hỏi thêm.",
+      "- Đếm CHÍNH XÁC số câu hỏi — không thừa, không thiếu.",
+      "- CHỈ dựa vào nội dung khách gửi. KHÔNG suy diễn thêm.",
+      "- KHÔNG thêm lời khuyên hay gợi ý trải bài.",
     ].join("\n");
   }
+
+  // ===== GENERATION CONFIG (anti-hallucination) =====
+  const GENERATION_CONFIG = {
+    temperature: 0.2,
+    topP: 0.8,
+    topK: 40,
+    maxOutputTokens: 1024,
+  };
 
   // ===== API KEY & SETTINGS MANAGEMENT =====
   async function loadApiKey() {
     try {
-      const data = await chrome.storage.local.get(["aiChatApiKey", "aiChatMaxHistory"]);
+      const data = await chrome.storage.local.get([
+        "aiChatApiKey",
+        "aiChatMaxHistory",
+        "aiChatSendContext",
+      ]);
       if (data.aiChatApiKey) T.aiChatApiKey = data.aiChatApiKey;
       if (typeof data.aiChatMaxHistory === "number") {
         T.aiChatMaxHistory = data.aiChatMaxHistory;
+      }
+      if (typeof data.aiChatSendContext === "boolean") {
+        T.aiChatSendContext = data.aiChatSendContext;
       }
     } catch {
       /* silent */
@@ -60,6 +91,11 @@
     T.storage.syncSave({ aiChatMaxHistory: val });
     trimHistory();
     renderMessages();
+  }
+
+  function saveSendContext(val) {
+    T.aiChatSendContext = val;
+    T.storage.syncSave({ aiChatSendContext: val });
   }
 
   // Trim history to maxHistory (keeps most recent messages)
@@ -85,15 +121,23 @@
     renderMessages();
     scrollToBottom();
 
-    // Build request body (send only kept messages)
-    const contents = T.aiChatHistory.map((msg) => ({
-      role: msg.role,
-      parts: [{ text: msg.text }],
-    }));
+    // Build contents — with or without context window
+    let contents;
+    if (T.aiChatSendContext) {
+      // Send full history for contextual conversation
+      contents = T.aiChatHistory.map((msg) => ({
+        role: msg.role,
+        parts: [{ text: msg.text }],
+      }));
+    } else {
+      // Send only the latest user message (no context)
+      contents = [{ role: "user", parts: [{ text: userText.trim() }] }];
+    }
 
     const body = {
       system_instruction: { parts: [{ text: buildSystemPrompt() }] },
       contents,
+      generationConfig: GENERATION_CONFIG,
     };
 
     T.aiChatLoading = true;
@@ -171,6 +215,13 @@
             <option value="50">50 tin</option>
           </select>
         </div>
+        <div class="tqs-aichat-settings-row">
+          <label class="tqs-aichat-label">Gửi ngữ cảnh:</label>
+          <label class="tqs-switch-label" style="margin-left:auto">
+            <input type="checkbox" id="tqs-aichat-context-toggle" checked>
+            <span class="tqs-switch"></span>
+          </label>
+        </div>
       </div>
 
       <div class="tqs-aichat-messages" id="tqs-aichat-messages"></div>
@@ -197,12 +248,38 @@
 
   // ===== FORMAT MESSAGE TEXT → HTML =====
   function formatMessageHTML(text) {
-    return text
+    // Escape HTML
+    let html = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\n/g, "<br>");
+      .replace(/>/g, "&gt;");
+
+    // Section headers: 📝 TÓM TẮT / 📊 PHÂN TÍCH / 🏷️ CHỦ ĐỀ
+    html = html.replace(
+      /^(📝|📊|🏷️|❌)\s*(.+)$/gm,
+      '<div class="tqs-ai-section-header"><span class="tqs-ai-section-icon">$1</span> $2</div>'
+    );
+
+    // Numbered list items: "1. text"
+    html = html.replace(
+      /^(\d+)\.\s+(.+)$/gm,
+      '<div class="tqs-ai-list-item"><span class="tqs-ai-list-num">$1</span><span>$2</span></div>'
+    );
+
+    // Bold: **text**
+    html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+    // Italic: *text*
+    html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+    // Line breaks
+    html = html.replace(/\n/g, "<br>");
+
+    // Clean up: remove <br> right after section headers and before list items
+    html = html.replace(/<\/div><br>/g, "</div>");
+    html = html.replace(/<br><div class="/g, '<div class="');
+
+    return html;
   }
 
   // ===== BUILD EMPTY STATE =====
@@ -240,7 +317,6 @@
       // Click-to-copy cho model bubbles
       if (msg.role === "model") {
         bubble.title = "Click để copy";
-        bubble.style.cursor = "pointer";
         bubble.addEventListener("click", () => {
           navigator.clipboard.writeText(msg.text).then(() => {
             T.ui.showToast("📋 Đã copy phản hồi AI");
@@ -325,6 +401,9 @@
         if (T.els.aiChatMaxHistorySelect) {
           T.els.aiChatMaxHistorySelect.value = String(T.aiChatMaxHistory);
         }
+        // Context toggle
+        const ctxToggle = document.getElementById("tqs-aichat-context-toggle");
+        if (ctxToggle) ctxToggle.checked = T.aiChatSendContext !== false;
       }
     });
 
@@ -345,6 +424,13 @@
       const val = parseInt(T.els.aiChatMaxHistorySelect.value) || DEFAULT_MAX_HISTORY;
       saveMaxHistory(val);
       T.ui.showToast("✓ Lưu tối đa " + val + " tin");
+    });
+
+    // Context window toggle
+    const ctxToggle = document.getElementById("tqs-aichat-context-toggle");
+    ctxToggle?.addEventListener("change", () => {
+      saveSendContext(ctxToggle.checked);
+      T.ui.showToast(ctxToggle.checked ? "✓ Gửi ngữ cảnh: Bật" : "✓ Gửi ngữ cảnh: Tắt");
     });
 
     // Clear chat

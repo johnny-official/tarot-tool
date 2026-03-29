@@ -7,80 +7,78 @@
 
   // ===== PANEL HTML =====
   function createPanelHTML() {
-    // NOTE: T.PRICING_DATA is NOT loaded yet when this runs.
-    // Badge gets updated later by main.js after loadConfig + loadPricingData.
-
     return `
       <div class="tqs-header" id="tqs-drag-handle">
-        <div class="tqs-logo">
-          <span class="tqs-logo-icon">🔮</span> QuickSale
-        </div>
+        <div class="tqs-logo">🔮 QuickSale</div>
         <div class="tqs-header-actions">
           <span class="tqs-page-badge tqs-badge-cyan" id="tqs-page-badge">...</span>
-          <span class="tqs-source-badge tqs-source-fb" id="tqs-source-badge" title="Nguồn">🔵</span>
-          <span class="tqs-stats-inline" title="Đơn / Tiền"><span id="tqs-total-orders">0</span>đ · <span id="tqs-total-revenue">0k</span></span>
-          <button class="tqs-header-btn" id="tqs-aichat-btn" title="🤖 AI Chat">🤖</button>
-          <button class="tqs-header-btn" id="tqs-report" title="📋 Báo Cáo">📋</button>
-          <button class="tqs-header-btn" id="tqs-reset" title="🔄 Reset">🔄</button>
+          <span class="tqs-source-badge" id="tqs-source-badge" title="Nguồn">🔵</span>
+          <button class="tqs-header-btn tqs-header-ai" id="tqs-aichat-btn" title="AI Chat">✦</button>
           <button class="tqs-header-btn tqs-minimize" id="tqs-minimize">─</button>
           <button class="tqs-header-btn tqs-close" id="tqs-close">✕</button>
         </div>
       </div>
 
       <div class="tqs-body">
-        <!-- READER ROW -->
-        <div class="tqs-reader-row">
+        <div class="tqs-toolbar">
+          <div class="tqs-stats-inline"><span id="tqs-total-orders">0</span>đ · <span id="tqs-total-revenue">0k</span></div>
+          <div class="tqs-toolbar-actions">
+            <button class="tqs-pill-btn" id="tqs-report">Báo cáo</button>
+            <button class="tqs-pill-btn" id="tqs-reset">Reset</button>
+          </div>
+        </div>
+
+        <div class="tqs-section">
           <div class="tqs-reader-card" id="tqs-reader-card">
             <div class="tqs-reader-main">
               <div class="tqs-reader-name" id="tqs-active-reader-name">Chưa chọn</div>
               <div class="tqs-reader-meta" id="tqs-reader-status">Nhập tên bên dưới</div>
             </div>
             <div class="tqs-reader-actions">
-              <label class="tqs-mini-toggle" title="🔄 Tự đổi"><input type="checkbox" id="tqs-auto-rotate-toggle" checked><span class="tqs-check"></span></label>
-              <label class="tqs-mini-toggle" title="📅 Lịch"><input type="checkbox" id="tqs-schedule-mode-toggle"><span class="tqs-check"></span></label>
-              <button class="tqs-icon-action" id="tqs-schedule-btn" title="Paste Lịch">📅</button>
+              <label class="tqs-switch-label" title="Tự đổi reader">
+                <input type="checkbox" id="tqs-auto-rotate-toggle" checked>
+                <span class="tqs-switch"></span>
+                <span class="tqs-switch-text">↻</span>
+              </label>
+              <label class="tqs-switch-label" title="Chế độ lịch ca">
+                <input type="checkbox" id="tqs-schedule-mode-toggle">
+                <span class="tqs-switch"></span>
+                <span class="tqs-switch-text">📅</span>
+              </label>
+              <button class="tqs-icon-btn" id="tqs-schedule-btn" title="Paste lịch">📅</button>
             </div>
           </div>
           <div class="tqs-reader-chips" id="tqs-reader-chips"></div>
-          <input type="text" class="tqs-input tqs-input-sm" id="tqs-reader-add-input" placeholder="Gõ tên → Enter">
+          <input type="text" class="tqs-input tqs-input-sm" id="tqs-reader-add-input" placeholder="Thêm reader...">
         </div>
 
-        <!-- FORM -->
-        <input type="text" class="tqs-input" id="tqs-customer" placeholder="Tên khách hàng">
-
-        <div class="tqs-row">
-          <select class="tqs-select" id="tqs-service" style="flex:1">
-            <option value="">-- Dịch vụ --</option>
-          </select>
-          <select class="tqs-select" id="tqs-package" style="flex:1">
-            <option value="">-- Gói --</option>
-          </select>
-        </div>
-
-        <div class="tqs-row tqs-row-misc">
-          <label class="tqs-custom-toggle"><input type="checkbox" id="tqs-custom-mode"><span class="tqs-check"></span> Tuỳ chọn</label>
-          <div id="tqs-custom-inputs" class="tqs-hidden tqs-row" style="flex:1">
-            <input type="text" class="tqs-input" id="tqs-custom-name" placeholder="Tên gói" style="flex:2">
-            <input type="number" class="tqs-input" id="tqs-custom-price" placeholder="Giá" style="flex:1">
+        <div class="tqs-section">
+          <input type="text" class="tqs-input" id="tqs-customer" placeholder="Tên khách hàng">
+          <div class="tqs-row">
+            <select class="tqs-select" id="tqs-service" style="flex:1"><option value="">Dịch vụ</option></select>
+            <select class="tqs-select" id="tqs-package" style="flex:1"><option value="">Gói</option></select>
           </div>
+          <div class="tqs-row tqs-row-misc">
+            <label class="tqs-custom-toggle"><input type="checkbox" id="tqs-custom-mode"><span class="tqs-check"></span> Tuỳ chọn</label>
+            <div id="tqs-custom-inputs" class="tqs-hidden tqs-row" style="flex:1">
+              <input type="text" class="tqs-input" id="tqs-custom-name" placeholder="Tên gói" style="flex:2">
+              <input type="number" class="tqs-input" id="tqs-custom-price" placeholder="Giá" style="flex:1">
+            </div>
+          </div>
+          <input type="text" class="tqs-input" id="tqs-note" placeholder="Ghi chú">
         </div>
 
-        <input type="text" class="tqs-input" id="tqs-note" placeholder="Ghi chú...">
-
-        <!-- PRICE + ACTIONS -->
         <div class="tqs-bottom-bar">
           <div class="tqs-price-tag" id="tqs-price">0k</div>
-          <button class="tqs-btn tqs-btn-primary" id="tqs-copy-save" style="flex:1">📋 Copy & Lưu</button>
+          <button class="tqs-btn tqs-btn-primary" id="tqs-copy-save" style="flex:1">Copy & Lưu</button>
         </div>
 
-        <!-- RECENT ORDERS (max 2) -->
         <div class="tqs-recent" id="tqs-order-list"></div>
       </div>
 
-      <!-- EDIT MODAL -->
       <div class="tqs-edit-overlay tqs-hidden" id="tqs-edit-modal">
         <div class="tqs-edit-card">
-          <div class="tqs-edit-title">✏️ Sửa đơn</div>
+          <div class="tqs-edit-title">Sửa đơn</div>
           <input type="text" class="tqs-input" id="tqs-edit-customer" placeholder="Khách">
           <div class="tqs-row">
             <input type="text" class="tqs-input" id="tqs-edit-reader" placeholder="Reader">
@@ -95,22 +93,16 @@
         </div>
       </div>
 
-      <!-- SCHEDULE MODAL -->
       <div class="tqs-modal tqs-hidden" id="tqs-schedule-modal">
         <div class="tqs-modal-content">
-          <div class="tqs-edit-title">📅 Lịch làm việc</div>
-          <textarea class="tqs-textarea" id="tqs-schedule-input" placeholder="Paste lịch ca vào đây...
-
-VD:
-8h - 14h @Hậu @Mai
-14h - 22h @Lan"></textarea>
+          <div class="tqs-edit-title">Lịch làm việc</div>
+          <textarea class="tqs-textarea" id="tqs-schedule-input" placeholder="Paste lịch ca vào đây...&#10;&#10;VD:&#10;8h - 14h @Hậu @Mai&#10;14h - 22h @Lan"></textarea>
           <div class="tqs-edit-btns">
             <button class="tqs-ebtn tqs-ebtn-cancel" id="tqs-schedule-close">Đóng</button>
             <button class="tqs-ebtn tqs-ebtn-save" id="tqs-schedule-parse">Cập nhật</button>
           </div>
         </div>
       </div>
-
     `;
   }
 

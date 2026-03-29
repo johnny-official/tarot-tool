@@ -16,6 +16,7 @@
 - Reader management (auto-rotation, schedule shifts)
 - Page-group sync: CÁ + DỪA share rotation, POBO independent
 - Order dashboard + shift reports
+- AI Chat panel (Google Gemini 2.5 Flash) for customer message analysis
 
 ---
 
@@ -29,9 +30,10 @@
 | **Module pattern** | IIFE, export via `T.moduleName = { ... }` |
 | **Storage** | `T.storage.syncSave()` — debounced 200ms |
 | **DOM** | `DocumentFragment` for batch element creation |
-| **CSS** | Use `var(--accent)`, `var(--green)`, etc. from `:root` |
+| **CSS** | Apple Dark design system — use `var(--accent)`, `var(--green)`, etc. from `#tarot-quicksale-panel` |
 | **Language** | UI text, toasts, comments = **Vietnamese** |
 | **Debug** | ❌ No `console.log` |
+| **Design** | Apple-style minimalism — 0.5px borders, system colors, blur glass, Apple toggle switches |
 
 ---
 
@@ -41,20 +43,25 @@
 tarot-tool/
 ├── manifest.json          ← Chrome extension config (v3)
 ├── background.js          ← Service Worker — toggle only (6 lines)
-├── content.css            ← Minimal dark theme
+├── content.css            ← Apple Dark design system + AI chat styles
 ├── config.json            ← Real page IDs (committed)
 ├── config.example.json    ← Template for newcomers
 ├── price.json             ← Pricing — SINGLE SOURCE OF TRUTH
 │
-├── content/               ← 8 JS modules, loaded in order ↓
+├── content/               ← 9 JS modules, loaded in order ↓
 │   ├── state.js           ← (1) window.TQS namespace + mutable state
 │   ├── constants.js       ← (2) Service abbreviations, emoji, text config
 │   ├── detection.js       ← (3) Auto-detect page, platform, customer name
 │   ├── storage.js         ← (4) Chrome storage CRUD, cross-tab sync
 │   ├── readers.js         ← (5) Reader CRUD, rotation, schedule, page-group sync
 │   ├── orders.js          ← (6) Order CRUD, message gen, report
-│   ├── ui.js              ← (7) Panel HTML, toast, modal, drag
-│   └── main.js            ← (8) Init, events, SPA observer — LOAD LAST
+│   ├── aichat.js          ← (7) AI Chat — Gemini API, chat UI logic
+│   ├── ui.js              ← (8) Panel HTML, toast, modal, drag
+│   └── main.js            ← (9) Init, events, SPA observer — LOAD LAST
+│
+├── skills/                ← AI agent skill files
+│   ├── design.md          ← Design system principles
+│   └── redesign.md        ← UI redesign guidelines
 │
 ├── popup.html + popup.js + style.css  ← Popup dashboard (unused)
 └── icons/                 ← Extension icons (SVG)
@@ -63,9 +70,9 @@ tarot-tool/
 ### Load Order (critical!)
 
 ```
-state → constants → detection → storage → readers → orders → ui → main
-  ↑                                                                  |
-  └──────────── All read/write via window.TQS ───────────────────────┘
+state → constants → detection → storage → readers → orders → aichat → ui → main
+  ↑                                                                         |
+  └──────────── All read/write via window.TQS ──────────────────────────────┘
 ```
 
 **When adding a new module:** MUST update the `js` array in `manifest.json` in the correct order.
@@ -113,22 +120,38 @@ Abbreviation maps. Edit this file to change output text:
 - `startScheduleTimer()` — auto-update every 60s
 
 ### `orders.js`
-- `generateMessage()` — build formatted output text
+- `generateMessage()` — build formatted output text (**DO NOT MODIFY OUTPUT FORMAT**)
 - `copyAndSave()` — validate → detect platform → copy → save → rotate (with `_copying` lock)
 - `populateServices()` / `populatePackages()` — dropdown logic
 - `buildReport()`, `copyReport()`, `resetShift()`
 
+### `aichat.js`
+- **Model**: `gemini-2.5-flash` via Google Generative Language API
+- `sendMessage(text)` — sends to Gemini API with system prompt for tarot analysis
+- `renderMessages()` — builds chat bubbles from `T.aiChatHistory`, rebuilds empty state dynamically
+- `createChatHTML()` — returns AI chat panel HTML template
+- `initChatEvents()` — wires send, settings, clear, close, keyboard events
+- `loadApiKey()` / `saveApiKey()` — persistent API key in `chrome.storage.local`
+- `toggleChat()` — show/hide AI panel
+- Click-to-copy on AI response bubbles
+- Auto-resize textarea on input
+
 ### `ui.js`
-- `createPanelHTML()` — full HTML template
-- `injectPanel()` — inject into body
-- `collectElements(panel)` — cache DOM refs into `T.els`
+- `createPanelHTML()` — main panel HTML with 3 zones:
+  1. **Header**: logo + page badge + source badge + minimize/close
+  2. **Toolbar**: stats counter + pill buttons (✦ AI, Báo cáo, Reset)
+  3. **Body**: grouped sections (reader section + form section) + bottom bar + recent orders
+- `injectPanel()` — creates wrapper with main panel + AI chat panel side-by-side
+- `collectElements(panel)` — cache 40+ DOM refs into `T.els`
 - `showToast()`, `showConfirm()` — feedback UI
-- `initDrag()`, `initControls()` — panel behavior
+- `initDrag()` — drag from both main header and AI chat header
+- `initControls()` — minimize/close/toggle
+- `updatePageBadge()`, `updateSourceBadge()` — badge rendering
 
 ### `main.js`
 - `init()` — sequence: inject → loadConfig + loadPricing (parallel) → loadData → events
 - `initEvents()` — wire all event listeners
-- `initShortcuts()` — Alt+T toggle, Alt+C copy, Alt+1..9 package select
+- `initShortcuts()` — Alt+T toggle, Alt+A AI chat, Alt+C copy, Alt+1..9 package select
 - `initSPAObserver()` — URL polling 2s + `selected_item_id` tracking
 - `initConversationObserver()` — DOM-level conversation change detection
 
@@ -187,6 +210,8 @@ Copy on POBO → rotate POBO index → CÁ/DỪA unaffected.
 | `schedule` | `string` | Raw schedule text |
 | `scheduleSlots` | `Slot[]` | Parsed time slots |
 | `scheduleMode` | `boolean` | Schedule mode active |
+| `aiChatApiKey` | `string` | Google Gemini API key |
+| `aiChatMaxHistory` | `number` | Max chat history entries (default: 5) |
 
 ### Order object
 ```typescript
@@ -219,9 +244,70 @@ interface Order {
 
 **Chỉ CÁ có prefix `[CÁ]`** để phân biệt với DỪA. BƠ + DỪA dùng format đơn giản.
 
+> ⚠️ **DO NOT modify output format** in `orders.js` → `generateMessage()`. This is the business-critical format agreed upon.
+
 ---
 
-## 8. Module Pattern
+## 8. UI Architecture
+
+### Design System — Apple Dark
+
+CSS tokens defined on `#tarot-quicksale-panel`:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--bg` | `rgba(28,28,30,0.92)` | Panel background |
+| `--bg-secondary` | `rgba(44,44,46,0.65)` | Grouped sections |
+| `--bg-tertiary` | `rgba(58,58,60,0.45)` | Inputs, cards |
+| `--fill` | `rgba(120,120,128,0.2)` | Pill buttons, fills |
+| `--separator` | `rgba(84,84,88,0.34)` | Borders, dividers |
+| `--label` | `#FFFFFF` | Primary text |
+| `--label-secondary` | `rgba(235,235,245,0.6)` | Secondary text |
+| `--label-tertiary` | `rgba(235,235,245,0.3)` | Muted text |
+| `--accent` | `#0A84FF` | System blue (buttons, links) |
+| `--green` | `#30D158` | System green (toggles, prices) |
+| `--red` | `#FF453A` | System red (delete, error) |
+| `--orange` | `#FF9F0A` | System orange (warnings) |
+| `--purple` | `#BF5AF2` | System purple (AI accent) |
+
+### Panel HTML Structure
+
+```
+#tqs-wrapper (fixed, draggable)
+├── #tarot-quicksale-panel (300px)
+│   ├── .tqs-header (drag handle)
+│   │   ├── .tqs-logo "🔮 QuickSale"
+│   │   └── .tqs-header-actions (badge, source, ─, ✕)
+│   ├── .tqs-body
+│   │   ├── .tqs-toolbar (stats + pill buttons: ✦ AI, Báo cáo, Reset)
+│   │   ├── .tqs-section (reader: card + Apple switches + chips + input)
+│   │   ├── .tqs-section (form: customer + service/package + custom + note)
+│   │   ├── .tqs-bottom-bar (price tag + "Copy & Lưu" CTA)
+│   │   └── .tqs-recent (order list)
+│   ├── .tqs-edit-overlay (edit modal)
+│   └── .tqs-modal (schedule modal)
+└── #tqs-aichat-panel (360px, side-attached)
+    ├── .tqs-aichat-header
+    ├── .tqs-aichat-settings (collapsible)
+    ├── .tqs-aichat-messages
+    ├── .tqs-aichat-typing
+    └── .tqs-aichat-input-row
+```
+
+### Key UI Components
+
+| Component | Class | Notes |
+|-----------|-------|-------|
+| **Apple toggle switch** | `.tqs-switch-label > input + .tqs-switch` | iOS-style, green when ON |
+| **Pill button** | `.tqs-pill-btn` | Toolbar actions, accent-colored text |
+| **AI pill** | `.tqs-pill-btn.tqs-pill-ai` | Purple accent, sparkle icon |
+| **Grouped section** | `.tqs-section` | Rounded bg container for visual grouping |
+| **Reader chip** | `.tqs-chip` / `.tqs-chip-active` | Built dynamically by readers.js |
+| **CTA button** | `.tqs-btn.tqs-btn-primary` | Solid accent blue |
+
+---
+
+## 9. Module Pattern
 
 ```javascript
 (function () {
@@ -237,22 +323,41 @@ interface Order {
 
 ---
 
-## 9. Code Change Checklist
+## 10. Performance Notes
+
+The extension runs as a content script on `business.facebook.com`. Performance is critical to avoid slowing the host page.
+
+| Technique | Implementation |
+|-----------|---------------|
+| **CSS containment** | `contain: layout style paint` on panel |
+| **Debounced saves** | Storage writes debounced 200ms |
+| **SPA polling** | URL check every 2s (lightweight) |
+| **DOM observer** | MutationObserver with 300ms debounce |
+| **Minimal repaints** | `transition` only on `transform`, `opacity`, `color` |
+| **No heavy animations** | No `filter` animations, no continuous keyframes on visible elements |
+| **Lazy AI panel** | AI chat panel hidden by default, only renders when opened |
+| **Backdrop-filter** | Used on panel root only — NOT on child elements (GPU expensive) |
+
+---
+
+## 11. Code Change Checklist
 
 - [ ] No framework / build tool
 - [ ] Pricing from `price.json`, page IDs from `config.json`
 - [ ] Storage writes via `T.storage.syncSave()`
 - [ ] New DOM elements use `DocumentFragment`
 - [ ] Cross-tab sync handled in `storage.js`
-- [ ] CSS uses variables from `:root`
+- [ ] CSS uses design tokens from `#tarot-quicksale-panel`
 - [ ] UI text in Vietnamese
 - [ ] Export API via `T.moduleName = { ... }`
-- [ ] New module → update `manifest.json` JS array
+- [ ] New module → update `manifest.json` JS array + load order in this file
+- [ ] DO NOT modify output format in `orders.js → generateMessage()`
 - [ ] Test: reload extension on `chrome://extensions`
+- [ ] Performance: avoid `backdrop-filter` on child elements
 
 ---
 
-## 10. Quick Checks
+## 12. Quick Checks
 
 ```bash
 # Syntax check all modules
@@ -268,20 +373,23 @@ grep -rn "T\.\w\+\.\w\+" content/*.js  # View cross-calls
 
 ---
 
-## 11. Keyboard Shortcuts
+## 13. Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
 | `Alt+T` | Toggle panel |
+| `Alt+A` | Toggle AI Chat |
 | `Alt+C` | Quick Copy & Save |
 | `Alt+1..9` | Select package by index |
 
 ---
 
-## 12. Known Limitations
+## 14. Known Limitations
 
 - FB Business Suite is a SPA → panel uses **URL polling 2s** + **MutationObserver** to detect changes
 - Facebook frequently changes DOM → detection selectors may need updates
 - `config.json` must exist before loading extension
 - Schedule only supports format: `8h - 14h @Reader1 @Reader2`
 - Manual override = one-time pick, does not consume a rotation turn
+- AI Chat requires a valid Google Gemini API key entered in settings
+- `backdrop-filter` is GPU-intensive — only used on the panel root, never on child elements

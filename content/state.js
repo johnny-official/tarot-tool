@@ -39,11 +39,19 @@ window.TQS = {
   currentPrice: 0,
   editingOrderId: null,
 
+  // AI Chat state
+  aiChatHistory: [],        // Array of { role: "user"|"model", text: string }
+  aiChatApiKey: null,       // Gemini API key (loaded from chrome.storage.local)
+  aiChatLoading: false,     // Request in-flight flag
+  aiChatMaxHistory: 5,      // Max messages to keep in session (configurable)
+
   // DOM element refs (populated by ui.js)
   els: {},
 
-  // Panel reference (set by ui.js)
+  // Panel references (set by ui.js)
+  wrapper: null,
   panel: null,
+  aiChatPanel: null,
 
   // Drag state
   isDragging: false,

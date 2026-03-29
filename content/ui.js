@@ -19,6 +19,7 @@
           <span class="tqs-page-badge tqs-badge-cyan" id="tqs-page-badge">...</span>
           <span class="tqs-source-badge tqs-source-fb" id="tqs-source-badge" title="Nguồn">🔵</span>
           <span class="tqs-stats-inline" title="Đơn / Tiền"><span id="tqs-total-orders">0</span>đ · <span id="tqs-total-revenue">0k</span></span>
+          <button class="tqs-header-btn" id="tqs-aichat-btn" title="🤖 AI Chat">🤖</button>
           <button class="tqs-header-btn" id="tqs-report" title="📋 Báo Cáo">📋</button>
           <button class="tqs-header-btn" id="tqs-reset" title="🔄 Reset">🔄</button>
           <button class="tqs-header-btn tqs-minimize" id="tqs-minimize">─</button>
@@ -109,23 +110,40 @@ VD:
           </div>
         </div>
       </div>
+
     `;
   }
 
   // ===== INJECT =====
   function injectPanel() {
-    if (document.getElementById("tarot-quicksale-panel")) return null;
+    if (document.getElementById("tqs-wrapper")) return null;
 
+    // Wrapper — holds both panels, is the draggable unit
+    const wrapper = document.createElement("div");
+    wrapper.id = "tqs-wrapper";
+
+    // Main panel
     const panel = document.createElement("div");
     panel.id = "tarot-quicksale-panel";
     panel.innerHTML = createPanelHTML();
-    document.body.appendChild(panel);
+    wrapper.appendChild(panel);
 
+    // AI Chat panel — attached to the right of main panel
+    const aiPanel = document.createElement("div");
+    aiPanel.id = "tqs-aichat-panel";
+    aiPanel.className = "tqs-hidden";
+    aiPanel.innerHTML = T.aichat.createChatHTML();
+    wrapper.appendChild(aiPanel);
+
+    document.body.appendChild(wrapper);
+
+    // Toast (independent)
     const toast = document.createElement("div");
     toast.className = "tqs-toast";
     toast.id = "tqs-toast";
     document.body.appendChild(toast);
 
+    // Toggle FAB (independent)
     const toggleBtn = document.createElement("button");
     toggleBtn.id = "tarot-quicksale-toggle";
     toggleBtn.innerHTML = "🔮";
@@ -133,7 +151,9 @@ VD:
     toggleBtn.classList.add("tqs-hidden");
     document.body.appendChild(toggleBtn);
 
+    T.wrapper = wrapper;
     T.panel = panel;
+    T.aiChatPanel = aiPanel;
     return panel;
   }
 
@@ -183,6 +203,21 @@ VD:
       readerChips: panel.querySelector("#tqs-reader-chips"),
       toast: document.querySelector("#tqs-toast"),
       toggleBtn: document.querySelector("#tarot-quicksale-toggle"),
+      wrapper: document.getElementById("tqs-wrapper"),
+      // AI Chat elements
+      aiChatBtn: panel.querySelector("#tqs-aichat-btn"),
+      aiChatPanel: document.getElementById("tqs-aichat-panel"),
+      aiChatMessages: document.querySelector("#tqs-aichat-messages"),
+      aiChatInput: document.querySelector("#tqs-aichat-input"),
+      aiChatSend: document.querySelector("#tqs-aichat-send"),
+      aiChatClose: document.querySelector("#tqs-aichat-close"),
+      aiChatClear: document.querySelector("#tqs-aichat-clear"),
+      aiChatTyping: document.querySelector("#tqs-aichat-typing"),
+      aiChatSettingsToggle: document.querySelector("#tqs-aichat-settings-toggle"),
+      aiChatSettings: document.querySelector("#tqs-aichat-settings"),
+      aiChatApiKeyInput: document.querySelector("#tqs-aichat-apikey"),
+      aiChatSaveKey: document.querySelector("#tqs-aichat-save-key"),
+      aiChatMaxHistorySelect: document.querySelector("#tqs-aichat-max-history"),
     };
   }
 
@@ -231,38 +266,45 @@ VD:
 
   // ===== DRAG =====
   function initDrag() {
-    T.els.header.addEventListener("mousedown", (e) => {
-      if (e.target.closest(".tqs-header-btn")) return;
+    const w = T.wrapper;
+    // Both headers can start drag
+    const startDrag = (e) => {
+      if (e.target.closest(".tqs-header-btn, .tqs-aichat-header-btn")) return;
       T.isDragging = true;
-      const rect = T.panel.getBoundingClientRect();
+      const rect = w.getBoundingClientRect();
       T.dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      T.panel.style.transition = "none";
-    });
+      w.style.transition = "none";
+    };
+    T.els.header.addEventListener("mousedown", startDrag);
+    // AI chat header drag
+    const aiHeader = T.aiChatPanel?.querySelector(".tqs-aichat-header");
+    if (aiHeader) aiHeader.addEventListener("mousedown", startDrag);
+
     document.addEventListener("mousemove", (e) => {
       if (!T.isDragging) return;
       e.preventDefault();
       const x = Math.max(
         0,
-        Math.min(e.clientX - T.dragOffset.x, window.innerWidth - T.panel.offsetWidth),
+        Math.min(e.clientX - T.dragOffset.x, window.innerWidth - w.offsetWidth),
       );
       const y = Math.max(
         0,
-        Math.min(e.clientY - T.dragOffset.y, window.innerHeight - T.panel.offsetHeight),
+        Math.min(e.clientY - T.dragOffset.y, window.innerHeight - w.offsetHeight),
       );
-      T.panel.style.left = x + "px";
-      T.panel.style.top = y + "px";
-      T.panel.style.right = "auto";
+      w.style.left = x + "px";
+      w.style.top = y + "px";
+      w.style.right = "auto";
     });
     document.addEventListener("mouseup", () => {
       T.isDragging = false;
-      T.panel.style.transition = "";
+      w.style.transition = "";
     });
   }
 
   // ===== PANEL CONTROLS =====
   function initControls() {
     T.els.closeBtn.addEventListener("click", () => {
-      T.panel.classList.add("tqs-hidden");
+      T.wrapper.classList.add("tqs-hidden");
       T.els.toggleBtn.classList.remove("tqs-hidden");
     });
     T.els.minimizeBtn.addEventListener("click", () => {
@@ -270,7 +312,7 @@ VD:
       T.els.minimizeBtn.textContent = mini ? "□" : "─";
     });
     T.els.toggleBtn.addEventListener("click", () => {
-      T.panel.classList.remove("tqs-hidden");
+      T.wrapper.classList.remove("tqs-hidden");
       T.els.toggleBtn.classList.add("tqs-hidden");
     });
   }

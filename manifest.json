@@ -5,7 +5,8 @@
   "description": "Công cụ hỗ trợ nhân viên Sale Tarot chốt đơn nhanh - Cá, Dừa, Pờ Bơ",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
-    "https://business.facebook.com/*"
+    "https://business.facebook.com/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "content_scripts": [
     {
@@ -17,6 +18,7 @@
         "content/storage.js",
         "content/readers.js",
         "content/orders.js",
+        "content/aichat.js",
         "content/ui.js",
         "content/main.js"
       ],

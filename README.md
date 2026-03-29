@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Miễn_Phí-100%25-22c55e?style=for-the-badge" alt="Miễn Phí">
 </p>
 
-<h1 align="center">🔮 Tarot QuickSale</h1>
+<h1 align="center">Tarot QuickSale</h1>
 
 <p align="center">
   <b>Chốt đơn Tarot nhanh gấp 5 lần — chỉ cần chọn, bấm, dán.</b><br>
@@ -35,16 +35,16 @@ Xong. 3 giây thay vì 30 giây. Đúng format, đúng giá, không sai.
 
 ## ✨ Tính năng nổi bật
 
-| | Tính năng | Lợi ích |
-|---|---|---|
-| ⚡ | **Chốt đơn 1 click** | Chọn gói, bấm Copy là xong — không cần gõ tay |
-| 🏪 | **Tự nhận diện page** | Tự biết đang ở page Bơ, Dừa hay Cá |
-| 🔵🟣 | **Phân biệt FB / IG** | Tự nhận biết khách từ Facebook hay Instagram |
-| 🔄 | **Tự xoay Reader** | Copy xong đơn, tự chuyển sang reader kế tiếp |
-| 📅 | **Lịch ca tự động** | Paste lịch ca từ group → tự gán reader theo giờ |
-| 📊 | **Báo cáo kết ca** | Thống kê đơn, tiền, lương — copy 1 phát là xong |
-| 📋 | **Giá chuẩn** | Giá tự hiện theo bảng giá — không cần nhớ |
-| ⌨️ | **Phím tắt** | Alt+C copy nhanh, Alt+1..9 chọn gói cực nhanh |
+|      | Tính năng             | Lợi ích                                         |
+| ---- | --------------------- | ----------------------------------------------- |
+| ⚡   | **Chốt đơn 1 click**  | Chọn gói, bấm Copy là xong — không cần gõ tay   |
+| 🏪   | **Tự nhận diện page** | Tự biết đang ở page Bơ, Dừa hay Cá              |
+| 🔵🟣 | **Phân biệt FB / IG** | Tự nhận biết khách từ Facebook hay Instagram    |
+| 🔄   | **Tự xoay Reader**    | Copy xong đơn, tự chuyển sang reader kế tiếp    |
+| 📅   | **Lịch ca tự động**   | Paste lịch ca từ group → tự gán reader theo giờ |
+| 📊   | **Báo cáo kết ca**    | Thống kê đơn, tiền, lương — copy 1 phát là xong |
+| 📋   | **Giá chuẩn**         | Giá tự hiện theo bảng giá — không cần nhớ       |
+| ⌨️   | **Phím tắt**          | Alt+C copy nhanh, Alt+1..9 chọn gói cực nhanh   |
 
 ---
 
@@ -55,6 +55,7 @@ Xong. 3 giây thay vì 30 giây. Đúng format, đúng giá, không sai.
 👉 **[Nhấp vào đây để tải về](https://github.com/johnny-official/tarot-tool/archive/refs/heads/main.zip)** — file sẽ tải ngay về máy.
 
 Sau khi tải xong:
+
 1. Mở file ZIP vừa tải (thường nằm trong thư mục **Tải xuống/Downloads**)
 2. Nhấp chuột phải → chọn **Giải nén tại đây** (Extract Here)
 3. Bạn sẽ thấy thư mục `tarot-tool-main` — ghi nhớ vị trí này
@@ -104,12 +105,14 @@ Mở group chat → dán tin nhắn (Ctrl + V)
 ### Kết quả copy ra trông như thế nào?
 
 **Page Bơ / Dừa** — format đơn giản:
+
 ```
 1CS TA - 20k 🔵Phương Thảo @Dương Thư Trâm
 7CS LENOR - 145k 🟣Tuyet Nhii @Nguyễn Nguyên
 ```
 
 **Page Cá** — có `[CÁ]` phía trước để phân biệt:
+
 ```
 [CÁ] CS TA - 20k 🔵Nguyễn Văn A @Vănn Tài
 [CÁ] 3CB - 50k 🟣Thanh Hằng @Ngọc Phan
@@ -119,31 +122,35 @@ Mở group chat → dán tin nhắn (Ctrl + V)
 
 Ví dụ: `1CS TA - 20k 🔵Phương Thảo @Dương Thư Trâm`
 
-| Phần | Ý nghĩa |
-|---|---|
-| `1CS` | 1 Câu Soi (viết tắt tự động) |
-| `TA` | Tarot (viết tắt tự động) |
-| `20k` | Giá 20 nghìn đồng |
-| 🔵 | Khách nhắn từ **Facebook** |
-| 🟣 | Khách nhắn từ **Instagram** |
-| `Phương Thảo` | Tên khách hàng |
-| `@Dương Thư Trâm` | Reader đang trực ca |
+| Phần              | Ý nghĩa                      |
+| ----------------- | ---------------------------- |
+| `1CS`             | 1 Câu Soi (viết tắt tự động) |
+| `TA`              | Tarot (viết tắt tự động)     |
+| `20k`             | Giá 20 nghìn đồng            |
+| 🔵                | Khách nhắn từ **Facebook**   |
+| 🟣                | Khách nhắn từ **Instagram**  |
+| `Phương Thảo`     | Tên khách hàng               |
+| `@Dương Thư Trâm` | Reader đang trực ca          |
 
 ---
 
 ## 👤 Quản lý Reader
 
 ### Thêm reader
+
 Gõ tên vào ô **"Gõ tên → Enter"** trên panel → nhấn **Enter** → Reader xuất hiện dưới dạng chip.
 
 ### Chọn reader bằng tay
+
 Bấm vào chip tên reader → Reader đó dùng cho đơn kế tiếp → Sau đơn đó tự quay lại xoay vòng.
 
 ### Tự xoay reader
+
 - **Bật** toggle xoay (✅): Mỗi đơn copy xong tự chuyển sang reader kế tiếp
 - **Tắt** toggle xoay: Giữ nguyên reader hiện tại
 
 ### Xóa reader
+
 Bấm dấu **×** trên chip tên reader.
 
 ---
@@ -160,6 +167,7 @@ Tính năng giúp **tự động gán reader theo giờ** dựa trên lịch ca.
 ### Ví dụ lịch ca
 
 Quản lý đăng trong group:
+
 ```
 🎀🎀 CA LÀM VIỆC 🎀🎀
 ✨Ca Sáng: 9h - 11h : @Vănn Tài
@@ -258,8 +266,8 @@ Sửa file `config.json` (mở bằng **Notepad**):
 {
   "pages": {
     "POBO": { "fbPageId": "918768421315641", "name": "PỜ BƠ" },
-    "DUA":  { "fbPageId": "513140915211900", "name": "DỪA" },
-    "CA":   { "fbPageId": "105889999207829", "name": "CÁ" }
+    "DUA": { "fbPageId": "513140915211900", "name": "DỪA" },
+    "CA": { "fbPageId": "105889999207829", "name": "CÁ" }
   }
 }
 ```
@@ -284,24 +292,24 @@ Ví dụ: `https://business.facebook.com/...?asset_id=918768421315641` → Page 
 
 ## ❓ Xử lý lỗi thường gặp
 
-| Vấn đề | Cách xử lý |
-|---|---|
-| Panel không hiện | Nhấn **Alt + T** · Kiểm tra đang ở `business.facebook.com` · Vào `chrome://extensions` kiểm tra đã bật |
-| Không nhận page | Mở `config.json` kiểm tra Page ID · So sánh với URL |
-| Giá sai / không hiện | Kiểm tra `price.json` · Cập nhật extension |
-| Copy ra 🟣 thay vì 🔵 | Đúng rồi! 🟣 = khách từ Instagram, 🔵 = khách từ Facebook |
+| Vấn đề                | Cách xử lý                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Panel không hiện      | Nhấn **Alt + T** · Kiểm tra đang ở `business.facebook.com` · Vào `chrome://extensions` kiểm tra đã bật |
+| Không nhận page       | Mở `config.json` kiểm tra Page ID · So sánh với URL                                                    |
+| Giá sai / không hiện  | Kiểm tra `price.json` · Cập nhật extension                                                             |
+| Copy ra 🟣 thay vì 🔵 | Đúng rồi! 🟣 = khách từ Instagram, 🔵 = khách từ Facebook                                              |
 
 ---
 
 ## ⌨️ Phím tắt
 
-| Phím | Chức năng |
-|---|---|
-| `Alt + T` | Ẩn / hiện panel |
-| `Alt + C` | Copy & Lưu đơn nhanh |
-| `Alt + 1..9` | Chọn gói nhanh theo số thứ tự |
-| `Enter` (ô tên khách) | Nhảy sang chọn dịch vụ |
-| `Enter` (ô ghi chú) | Copy và Lưu đơn |
+| Phím                  | Chức năng                     |
+| --------------------- | ----------------------------- |
+| `Alt + T`             | Ẩn / hiện panel               |
+| `Alt + C`             | Copy & Lưu đơn nhanh          |
+| `Alt + 1..9`          | Chọn gói nhanh theo số thứ tự |
+| `Enter` (ô tên khách) | Nhảy sang chọn dịch vụ        |
+| `Enter` (ô ghi chú)   | Copy và Lưu đơn               |
 
 ---
 

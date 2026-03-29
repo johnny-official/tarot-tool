@@ -7,7 +7,7 @@
   const T = window.TQS;
 
   // Guard against double-injection
-  if (document.getElementById("tarot-quicksale-panel")) return;
+  if (document.getElementById("tqs-wrapper")) return;
 
   // ===== EVENT WIRING =====
   function initEvents() {
@@ -139,23 +139,32 @@
 
       if (e.altKey && e.key === "t") {
         e.preventDefault();
-        const isHidden = T.panel.classList.contains("tqs-hidden");
-        T.panel.classList.toggle("tqs-hidden", !isHidden);
+        const isHidden = T.wrapper.classList.contains("tqs-hidden");
+        T.wrapper.classList.toggle("tqs-hidden", !isHidden);
         T.els.toggleBtn.classList.toggle("tqs-hidden", isHidden);
+        return;
+      }
+
+      // Alt+A — Toggle AI Chat
+      if (e.altKey && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        if (!T.wrapper.classList.contains("tqs-hidden")) {
+          T.aichat.toggleChat();
+        }
         return;
       }
 
       // Alt+C — Quick Copy & Save
       if (e.altKey && (e.key === "c" || e.key === "C")) {
         e.preventDefault();
-        if (!T.panel.classList.contains("tqs-hidden")) {
+        if (!T.wrapper.classList.contains("tqs-hidden")) {
           T.orders.copyAndSave();
         }
         return;
       }
 
       // Alt+1..9 — Quick chọn gói (khi panel đang mở)
-      if (e.altKey && e.key >= "1" && e.key <= "9" && !T.panel.classList.contains("tqs-hidden")) {
+      if (e.altKey && e.key >= "1" && e.key <= "9" && !T.wrapper.classList.contains("tqs-hidden")) {
         e.preventDefault();
         const idx = parseInt(e.key);
         const pkgSelect = T.els.packageSelect;
@@ -169,10 +178,10 @@
 
     chrome.runtime.onMessage.addListener((msg) => {
       if (msg.action === "togglePanel") {
-        T.panel.classList.toggle("tqs-hidden");
+        T.wrapper.classList.toggle("tqs-hidden");
         T.els.toggleBtn.classList.toggle(
           "tqs-hidden",
-          !T.panel.classList.contains("tqs-hidden"),
+          !T.wrapper.classList.contains("tqs-hidden"),
         );
       }
     });
@@ -246,10 +255,14 @@
     await T.storage.loadData();
     T.orders.populateServices();
 
+    // 4b. Load AI chat API key
+    await T.aichat.loadApiKey();
+
     // 5. Init UI systems
     T.ui.initDrag();
     T.ui.initControls();
     initEvents();
+    T.aichat.initChatEvents();
     initShortcuts();
     T.storage.initCrossTabSync();
     initSPAObserver();
